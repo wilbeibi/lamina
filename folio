@@ -192,6 +192,8 @@ def clip(s, n):
 FENCE = re.compile(r'^\s{0,3}(`{3,}|~{3,})')
 FN_DEF = re.compile(r'^\[\^([^\]\s]+)\]:[ \t]*(.*)$')
 FN_REF = re.compile(r'\[\^([^\]\s]+)\](?!:)')
+CALLOUT_START = re.compile(r'^\s{0,3}>\s*\[!(NOTE|IMPORTANT|WARNING)\](?:\s+(.*?))?\s*$', re.I)
+CALLOUT_LINE = re.compile(r'^\s{0,3}> ?(.*)$')
 
 
 def footnotes(text):
@@ -263,6 +265,39 @@ def footnotes(text):
     return '\n'.join(out), [(ident, notes[ident]) for ident in order]
 
 
+def callouts(text):
+    """Turn a small Obsidian-compatible callout subset into semantic HTML."""
+    lines, out, fence, i = text.split('\n'), [], None, 0
+    while i < len(lines):
+        ln = lines[i]
+        f = FENCE.match(ln)
+        if f:
+            fence = None if fence else f.group(1)[0]
+            out.append(ln)
+            i += 1
+            continue
+        start = None if fence else CALLOUT_START.match(ln)
+        if not start:
+            out.append(ln)
+            i += 1
+            continue
+        kind = start.group(1).lower()
+        title = start.group(2) or kind.title()
+        body, i = [], i + 1
+        while i < len(lines):
+            q = CALLOUT_LINE.match(lines[i])
+            if not q:
+                break
+            body.append(q.group(1))
+            i += 1
+        out.extend([
+            f'<aside class="callout callout-{kind}">',
+            f'<p class="callout-title">{html.escape(title)}</p>',
+            '', *body, '', '</aside>',
+        ])
+    return '\n'.join(out)
+
+
 _MD2HTML = None
 
 
@@ -289,6 +324,7 @@ def inline_html(text, math=True):
 
 def render_body(p):
     text, notes = footnotes(p.body)
+    text = callouts(text)
     h = md2html(text, p.cat['math'])
 
     # heading ids: the heading text itself, whitespace -> '-', deduped.
@@ -420,6 +456,20 @@ WL_RE = re.compile(r'<x-wikilink data-target="([^"]*)">(.*?)</x-wikilink>', re.S
 INTERNAL_RE = re.compile(r'^/?([\w][\w.-]*\.html)?(?:#(.*))?$')
 
 
+def page_asset(ctx, href):
+    """Return (known page-asset URL, source exists) for a local href."""
+    u = urllib.parse.urlsplit(html.unescape(href))
+    if u.scheme or u.netloc or not u.path:
+        return False, False
+    parts = tuple(x for x in urllib.parse.unquote(u.path).lstrip('/').split('/') if x not in ('', '.'))
+    if len(parts) < 2 or '..' in parts:
+        return False, False
+    pages = [p for p in ctx.pages if p.slug == parts[0]]
+    if not pages:
+        return False, False
+    return True, any(p.assets.joinpath(*parts[1:]).exists() for p in pages)
+
+
 def decorate(p, ctx):
     pops, keys = {}, {}
 
@@ -463,6 +513,9 @@ def decorate(p, ctx):
             return m.group(0)
         im = INTERNAL_RE.match(href)
         if not im:
+            known, exists = page_asset(ctx, href)
+            if known and not exists:
+                warn(f'{p.src.name}: dead asset link {href}')
             return m.group(0)
         file, anchor = im.group(1), im.group(2) or ''
         anchor = urllib.parse.unquote(html.unescape(anchor))
@@ -488,8 +541,11 @@ def decorate(p, ctx):
     p.toc = ''
     h2 = [(i, t) for lvl, i, t in p.headings if lvl == 2]
     if p.cat['toc'] and len(h2) >= ctx.site['toc_min']:
-        items = ''.join(f'<li><a href="#{urllib.parse.quote(i)}">{html.escape(t)}</a></li>' for i, t in h2)
-        p.toc = f'<nav class="toc"><ol>{items}</ol></nav>'
+        shown = [(lvl, i, t) for lvl, i, t in p.headings if lvl in (2, 3)]
+        items = ''.join(f'<li class="toc-h{lvl}"><a href="#{urllib.parse.quote(i)}">{html.escape(t)}</a></li>'
+                        for lvl, i, t in shown)
+        p.toc = (f'<nav class="toc" aria-label="Contents"><p class="toc-title">Contents</p>'
+                 f'<ol>{items}</ol></nav>')
 
 
 # ------------------------------------------------------------ git dates --

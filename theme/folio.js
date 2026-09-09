@@ -3,8 +3,9 @@
 //   1. sortable tables: click a header cell (numeric-aware: , $ % K/M/B)
 //   2. hover popups: [data-pop] elements show the <template> named by the attr
 //      (link previews, [[glossary]] terms, footnotes) -- built at build time
-//   3. mermaid bootstrap, theme-aware, re-renders when the OS theme flips
-//   4. window.folio helpers for embedded animations
+//   3. active-section marker for a long page's contents minimap
+//   4. mermaid bootstrap, theme-aware, re-renders when the OS theme flips
+//   5. window.folio helpers for embedded animations
 (function () {
   'use strict';
   var doc = document, dark = matchMedia('(prefers-color-scheme: dark)');
@@ -106,7 +107,35 @@
   doc.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(); });
   doc.addEventListener('scroll', function () { if (anchor) hide(); }, { passive: true });
 
-  // ---- 3. mermaid --------------------------------------------------------
+  // ---- 3. contents minimap ----------------------------------------------
+  var toc = doc.querySelector('.toc');
+  if (toc) {
+    var tocLinks = Array.prototype.slice.call(toc.querySelectorAll('a[href^="#"]'));
+    var tocHeads = tocLinks.map(function (a) {
+      try { return doc.getElementById(decodeURIComponent(a.hash.slice(1))); }
+      catch (_) { return null; }
+    });
+    var ticking = false;
+    function markSection() {
+      ticking = false;
+      var active = -1;
+      tocHeads.forEach(function (h, i) {
+        if (h && h.getBoundingClientRect().top <= 96) active = i;
+      });
+      if (active < 0 && tocHeads.length) active = 0;
+      tocLinks.forEach(function (a, i) {
+        if (i === active) a.setAttribute('aria-current', 'location');
+        else a.removeAttribute('aria-current');
+      });
+    }
+    function requestMark() {
+      if (!ticking) { ticking = true; requestAnimationFrame(markSection); }
+    }
+    doc.addEventListener('scroll', requestMark, { passive: true });
+    markSection();
+  }
+
+  // ---- 4. mermaid --------------------------------------------------------
   var diagrams = doc.querySelectorAll('pre.mermaid');
   if (diagrams.length && window.mermaid) {
     diagrams.forEach(function (el) { el.dataset.src = el.textContent; });

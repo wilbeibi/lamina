@@ -93,21 +93,50 @@ missing = "no {name} version yet"
 | `[text](other.html#Heading)` | link checked at build time; hover shows the target's heading + first paragraph |
 | `[[Term]]`, `[[Term\|label]]` | link to the glossary page's `## Term` with a hover popup of its first paragraph; `[[slug]]` / `[[slug#Heading]]` link pages |
 | `text[^n]` + `[^n]: note` | superscript with hover popup, endnote list at the bottom |
-| GFM `\| table \|` | sortable table (click a header), scrolls on narrow screens, breaks out of the column on wide ones |
+| GFM `\| table \|` | sortable table (click a header), stays within the reading column and scrolls when needed |
 | `<div class="t"><table>…` | the same, for hand-written tables |
+| `<div class="t wide"><table>…` | explicitly let a hand-written comparison table break out on wide screens |
 | ```` ```lang ```` fences | `<pre><code class="language-lang">` (no highlighting, by design) |
 | ```` ```mermaid ```` | diagram rendered client-side, theme follows the OS, source is the no-JS fallback |
 | `$x$`, `$$…$$` | MathJax (tex-svg), loaded only on pages with math; `$5` and `$10` in prose are left alone |
 | `<div class="viz">…<script>` | any raw HTML + inline script; page assets live in `pages/<cat>/<date>-<slug>/` and are served at `/slug/` |
 | `<details>` | collapsible, Markdown inside works |
+| `> [!NOTE]`, `[!IMPORTANT]`, `[!WARNING]` | a restrained callout; an optional title follows the marker |
 | `~~text~~`, `<del>` | strikethrough |
 | `<ins datetime="…" data-d="MM-DD">` | revision mark: left colour bar and margin date badge |
 | `<div class="errata">` | greyed correction log at the bottom |
 | `---` | `<hr>` |
 
 Everything JS-related is progressive enhancement: the page is complete
-without it. Each page loads `folio.js` (≈6 KB: sorting, popups, mermaid
-bootstrap, helpers) and, only when used, `charts.js`, mermaid, MathJax.
+without it. Each page loads `folio.js` (≈7 KB: sorting, popups, minimap,
+mermaid bootstrap, helpers) and, only when used, `charts.js`, mermaid, MathJax.
+
+Callouts intentionally have only three meanings: `NOTE` adds context,
+`IMPORTANT` states a conclusion or invariant, and `WARNING` names a risk or
+failure mode. Other `[!TYPE]` markers remain ordinary blockquotes.
+
+### Supporting material
+
+Keep raw scripts, result JSON, and other publishable evidence in the page's
+matching asset directory. Link the files explicitly from the page rather than
+asking Folio to infer a references section:
+
+```
+pages/notes/2026-09-09-report.md
+pages/notes/2026-09-09-report/probe.sh
+pages/notes/2026-09-09-report/results.json
+```
+
+```markdown
+## Materials
+
+- [Probe script](report/probe.sh)
+- [Raw results](report/results.json)
+```
+
+The files are copied verbatim to `/report/`; `folio check` verifies explicit
+links into page asset directories. Everything in such a directory is public,
+so it must not contain credentials or private raw data.
 
 ### Embedded animations
 

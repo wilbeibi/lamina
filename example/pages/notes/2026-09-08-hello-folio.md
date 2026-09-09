@@ -10,6 +10,10 @@ Prices in prose are safe with math on: $1.5B raised, $2 per seat, range $5-$10.
 
 [^why]: Footnotes are GFM syntax; md4c lacks them, so `folio` handles them itself. They can hold **markdown** and [links](second-note.html).
 
+### Heading hierarchy
+
+Third-level headings appear indented in the contents minimap without crowding it with deeper headings.
+
 ## Tables
 
 GFM pipe tables work now (they didn't under smu). Headers sort on click, numbers compare as numbers.
@@ -66,6 +70,20 @@ A raw HTML block with its own script. Page assets live in a directory named like
 Inline `<script>` works the same way; a file is just easier to edit.
 
 ## Details, revision marks, errata
+
+> [!NOTE] A quiet aside
+> Callouts use ordinary blockquote syntax and remain readable as source.
+
+> [!IMPORTANT] Keep this invariant
+> Use this for the conclusion or constraint a reader must retain.
+
+> [!WARNING] Check before rollout
+> Reserve warnings for a real risk or failure mode.
+
+## Materials
+
+- [Animation source](hello-folio/anim.js)
+- [Example raw results](hello-folio/results.json)
 
 <details>
 <summary>Folded section (markdown inside works now)</summary>

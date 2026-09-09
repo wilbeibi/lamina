@@ -1,0 +1,33 @@
+theme/style.css
+  s_ecdf84bcce868e::t_eca13e736749b7 8-13,24-29,96-118,200-201,203,247-275
+theme/folio.js
+  s_ecdf84bcce868e::t_eca13e736749b7 6-8,110-138
+folio
+  s_ecdf84bcce868e::t_eca13e736749b7 195-196,268-300,327,544-548
+  s_ecdf84bcce868e::t_76da655bfb99b9 459-472,516-518
+README.md
+  s_ecdf84bcce868e::t_76da655bfb99b9 118-139
+  s_ecdf84bcce868e::t_eca13e736749b7 96,98,104,113-116
+  s_ecdf84bcce868e::t_8e67d54f070b1d 111-112
+example/pages/notes/2026-09-08-hello-folio.md
+  s_ecdf84bcce868e::t_eca13e736749b7 13-16,74-81
+  s_ecdf84bcce868e::t_76da655bfb99b9 83-87
+example/pages/notes/2026-09-08-hello-folio/results.json
+  s_ecdf84bcce868e::t_76da655bfb99b9 1-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6749bea2edc68cf611e2841a73b0bf37eaf69f0f",
+  "prompts": {},
+  "sessions": {
+    "s_ecdf84bcce868e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08761-3601-7852-a2c0-9313492fd927",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Hongyi Shen <wilbeibi@gmail.com>"
+    }
+  }
+}

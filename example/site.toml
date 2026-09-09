@@ -1,0 +1,23 @@
+# folio site config. Categories are directories under pages/; the first one is
+# the landing page. Everything else has a default.
+name = "folio"
+description = "an example site showing every folio feature"
+url = "https://example.invalid"
+author = "you"
+lang = "en"          # default language for categories that don't say
+glossary = "glossary" # slug of the page whose h2/h3 headings define [[terms]]
+toc_min = 3          # a category with toc = true gets a TOC from this many h2s
+
+[[category]]
+dir = "notes"
+title = "notes"
+description = "notes, plans, and things being figured out"
+atom = true
+toc = true
+
+[[category]]
+dir = "reports"
+title = "reports"
+description = "longer write-ups, Chinese canonical with English translations"
+lang = "zh"
+translations = ["en"]

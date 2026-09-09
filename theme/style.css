@@ -1,0 +1,285 @@
+:root {
+	--bg: #fff;
+	--fg: #222;
+	--muted: #777;
+	--link: #05a;
+	--rule: #ddd;
+	--code-bg: #f4f4f4;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg: #131313;
+		--fg: #d8d8d8;
+		--muted: #888;
+		--link: #7ab7ff;
+		--rule: #333;
+		--code-bg: #1e1e1e;
+	}
+}
+
+body {
+	background: var(--bg);
+	color: var(--fg);
+	font: 16px/1.6 -apple-system, "Noto Sans CJK SC", sans-serif;
+	width: calc(100% - 2rem);
+	max-width: 46rem;
+	margin: 0 auto;
+	padding: 2rem 1rem 4rem;
+}
+
+a { color: var(--link); }
+a:hover { text-decoration: none; }
+
+nav, footer {
+	font-size: .875rem;
+	color: var(--muted);
+	padding: .5rem 0;
+}
+nav {
+	border-bottom: 1px solid var(--rule);
+	margin-bottom: 2rem;
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	gap: 1rem;
+}
+
+/* Two toggles share one shape: the language switch on a page (中文 · EN) and the
+   section switch on an index (reports · ideas). Current item emphasized, the
+   other a link (or muted, when a translation doesn't exist yet). The language
+   toggle's structure/logic is precomputed in mkpages.sh. */
+.langnav, .secnav { white-space: nowrap; }
+.langnav strong, .secnav strong { color: var(--fg); font-weight: 600; }
+.langnav .sep, .secnav .sep { color: var(--rule); margin: 0 .4rem; }
+.langnav .off { color: var(--muted); opacity: .55; cursor: default; }
+footer { border-top: 1px solid var(--rule); margin-top: 3rem; }
+
+h1 { font-size: 1.5rem; line-height: 1.3; margin: 0 0 .25rem; }
+h2 { font-size: 1.2rem; margin: 2.5rem 0 .75rem; }
+h3 { font-size: 1rem; margin: 2rem 0 .5rem; }
+
+.meta { color: var(--muted); font-size: .875rem; margin: 0 0 2rem; }
+
+ul.index { list-style: none; padding: 0; }
+ul.index li { margin: .4rem 0; }
+ul.index time { color: var(--muted); font-size: .875rem; margin-right: .75rem; }
+
+code, pre {
+	background: var(--code-bg);
+	font-family: ui-monospace, "Cascadia Code", Menlo, monospace;
+	font-size: .875rem;
+}
+code { padding: .1em .3em; border-radius: 3px; }
+pre { padding: .75rem; overflow-x: auto; border-radius: 3px; }
+pre code { background: none; padding: 0; }
+
+blockquote {
+	border-left: 3px solid var(--rule);
+	margin: 1rem 0;
+	padding: .25rem 0 .25rem 1rem;
+	color: var(--muted);
+}
+
+/* Tables are raw HTML in the Markdown (smu has no table syntax).
+   Wide ones scroll instead of blowing out the page. */
+.t { overflow-x: auto; margin: 1.25rem 0; }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+th, td { border: 0; border-bottom: 1px solid var(--rule); padding: .4rem .6rem; text-align: left; vertical-align: top; }
+td { font-variant-numeric: tabular-nums; }
+th { background: var(--code-bg); font-weight: 600; white-space: nowrap; }
+th[aria-sort]::after { content: " ↑"; color: var(--muted); }
+th[aria-sort="descending"]::after { content: " ↓"; }
+tbody tr:hover td, table tr:hover td { background: var(--code-bg); }
+
+summary { cursor: pointer; color: var(--muted); }
+h1, h2, h3 { text-wrap: balance; }
+h2, h3 { scroll-margin-top: 1rem; }
+h2:target, h3:target { text-decoration: underline; text-underline-offset: .3em; }
+
+hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
+img { max-width: 100%; }
+
+/* Corrections: struck text stays readable as history; the inline fix is muted,
+   not underlined (underline reads as a link). */
+del { color: var(--muted); }
+ins { text-decoration: none; color: var(--muted); font-size: .9em; }
+
+/* 修订页边标记：改动处包 <ins datetime data-d>，色条贴左缘、日期徽章挂页边。
+   叙事进勘误块，位置归这里；只保留最近一轮修订的标记（历史在 git）。 */
+ins[datetime] {
+	display: block;
+	position: relative;
+	text-decoration: none;
+	color: inherit;
+	font-size: inherit;
+	border-left: 3px solid var(--mark);
+	padding-left: .7rem;
+	margin-left: -.95rem;
+}
+ins[datetime]::before {
+	content: attr(data-d);
+	position: absolute;
+	left: -3.4rem;
+	top: .2rem;
+	width: 2.6rem;
+	text-align: right;
+	font-size: .7rem;
+	line-height: 1.4;
+	color: var(--mark);
+	font-variant-numeric: tabular-nums;
+}
+:root { --mark: #c08a00; }
+@media (prefers-color-scheme: dark) { :root { --mark: #d9a437; } }
+@media (max-width: 56rem) {
+	ins[datetime] { margin-left: -.7rem; padding-left: .45rem; }
+	ins[datetime]::before {
+		position: static;
+		display: inline-block;
+		width: auto;
+		margin-right: .4rem;
+		text-align: left;
+	}
+}
+/* 表格单元格内用行内变体：绝对定位的页边徽章会被 .t 的 overflow 裁掉 */
+td ins[datetime] {
+	display: inline;
+	border-left: none;
+	margin-left: 0;
+	padding-left: .35rem;
+	box-shadow: inset 3px 0 var(--mark);
+}
+td ins[datetime]::before {
+	position: static;
+	display: inline-block;
+	width: auto;
+	margin-right: .35rem;
+	text-align: left;
+}
+
+/* Errata: the body of a page is corrected in place and always reads as the
+   current version; this grayed block at the bottom keeps the record of what
+   used to be wrong (any category). */
+.errata { color: var(--muted); font-size: .875rem; border-top: 1px solid var(--rule); margin-top: 2.5rem; padding-top: 1rem; }
+.errata ul { margin: .5rem 0 0; }
+.errata code { font-size: .95em; }
+
+/* Responsive width. Prose keeps its 46rem reading measure; on wide screens
+   tables break out of the column (they're the only thing that needs the room).
+   The negative margin centers the wider block inside the 46rem body. */
+@media (min-width: 64rem) {
+	.t {
+		width: min(64rem, 92vw);
+		margin-left: calc((100% - min(64rem, 92vw)) / 2);
+	}
+}
+
+/* iOS: stop Safari inflating text in landscape; break long link text (URLs)
+   instead of forcing horizontal scroll on phones. The clip lives here and NOT
+   on body: body is only 46rem wide, so clipping there cuts off the wide-table
+   breakout above (both edges of any >2-column table). */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; overflow-x: clip; }
+a { overflow-wrap: anywhere; }
+
+/* ── folio additions ─────────────────────────────────────────────────
+   Everything below lights up only when a page uses the feature. */
+
+/* Hover popups: link previews, glossary terms, footnotes (folio.js). */
+.pop {
+	position: absolute; z-index: 10; display: none;
+	max-width: min(26rem, calc(100vw - 2rem));
+	background: var(--bg); color: var(--fg);
+	border: 1px solid var(--rule); border-radius: 6px;
+	padding: .55rem .8rem; font-size: .85rem; line-height: 1.5;
+	box-shadow: 0 4px 16px rgba(0,0,0,.14);
+}
+.pop p { margin: .15rem 0; }
+.pop .pop-c { color: var(--muted); font-size: .78rem; }
+.pop .pop-t { font-weight: 600; }
+.pop code { font-size: .85em; }
+
+/* [[wiki links]]: same colour as links, dotted underline marks "has a popup". */
+a.wl { text-decoration: underline dotted; text-underline-offset: .2em; }
+.wl-missing { color: var(--muted); border-bottom: 1px dashed var(--muted); }
+
+/* Footnotes: superscript refs, endnote list at the bottom. */
+sup.fn { font-size: .72em; line-height: 0; vertical-align: super; }
+sup.fn a { text-decoration: none; padding: 0 .1em; }
+sup.fn a:target { outline: 1px solid var(--link); }
+.footnotes { color: var(--muted); font-size: .875rem; border-top: 1px solid var(--rule); margin-top: 2.5rem; padding-top: .75rem; }
+.footnotes ol { padding-left: 1.4rem; margin: 0; }
+.footnotes li { margin: .3rem 0; }
+.footnotes li:target { color: var(--fg); }
+.fnback { text-decoration: none; margin-left: .25em; }
+
+/* Table of contents (category `toc = true`). */
+.toc { font-size: .875rem; color: var(--muted); margin: 0 0 2rem; }
+.toc ol { margin: 0; padding-left: 1.4rem; }
+.toc li { margin: .15rem 0; }
+
+/* Mermaid: source stays visible (and readable) until rendered / without JS. */
+pre.mermaid { background: none; padding: 0; text-align: center; color: var(--muted); font-size: .8rem; }
+pre.mermaid[data-processed] { color: inherit; font-size: inherit; }
+pre.mermaid svg { max-width: 100%; height: auto; }
+
+/* Math (MathJax, tex-svg). Display blocks scroll instead of overflowing. */
+div.math { overflow-x: auto; margin: 1rem 0; }
+mjx-container[display="true"] { margin: .5rem 0 !important; }
+
+/* Embedded animations / custom blocks: <div class="viz"> is a plain container;
+   canvas + svg scale to the column. */
+.viz { margin: 1.25rem 0; }
+.viz canvas, .viz svg { max-width: 100%; height: auto; display: block; }
+figure { margin: 1.25rem 0; }
+figcaption { color: var(--muted); font-size: .85rem; margin-top: .4rem; }
+
+/* GFM task lists */
+li.task-list-item { list-style: none; margin-left: -1.3rem; }
+li.task-list-item input { margin-right: .4rem; }
+
+/* ── Charts (.viz-root) ───────────────────────────────────────────────
+   Shared by every post. Server renders static SVG; charts.js layers a
+   hover tooltip on top (progressive enhancement, no-JS stays readable).
+   A model keeps the same --s* colour across every chart on a page. */
+.viz-root { --s1:#2a78d6; --s2:#1baf7a; --s3:#d98c00; --s4:#008300; --s5:#6d5bd0; --s6:#e34948; --s7:#d1568f; --s8:#eb6834; --grid:#e6e5df; --axis:#c3c2b7; }
+@media (prefers-color-scheme: dark) {
+	.viz-root { --s1:#4a95ef; --s2:#22b884; --s3:#e0a338; --s4:#28a745; --s5:#9b8cf0; --s6:#f06a6a; --s7:#e07bab; --s8:#f0794a; --grid:#2c2c2a; --axis:#3a3a37; }
+}
+.viz-root { margin: 1.2rem 0; padding: .7rem .5rem .4rem; border: 1px solid var(--rule); border-radius: 8px; position: relative; }
+.viz-root figcaption { font-size: .82rem; margin: 0 0 .5rem .2rem; display: flex; flex-wrap: wrap; gap: .3rem .9rem; align-items: baseline; }
+.viz-root .leg { display: inline-flex; gap: .7rem; flex-wrap: wrap; color: var(--muted); }
+.viz-root .li { display: inline-flex; align-items: center; gap: .3rem; }
+.viz-root.js .li { cursor: pointer; user-select: none; }
+.viz-root .li.off { opacity: .35; text-decoration: line-through; }
+.viz-root .sw { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.viz-root .note { color: var(--muted); font-size: .75rem; }
+.viz-root .tick { font-size: 10px; fill: var(--muted); font-variant-numeric: tabular-nums; }
+.viz-root .lbl { font-size: 10.5px; fill: var(--fg); }
+
+/* line charts */
+.viz-root .axis { stroke: var(--axis); }
+.viz-root .grid { stroke: var(--grid); }
+.viz-root .axl { font-size: 10px; fill: var(--muted); }
+
+/* scatter (quality vs cost) */
+.scatter .front { fill: none; stroke: var(--axis); stroke-width: 1.4; stroke-dasharray: 4 4; opacity: .7; }
+.scatter .front-dot { fill: var(--axis); }
+.scatter .mk { fill: var(--s); fill-opacity: .16; stroke: var(--s); stroke-width: 1.6; transition: fill-opacity .12s; }
+.scatter .ring { fill: none; stroke: var(--s); stroke-width: 1; opacity: .5; }
+.scatter.js .mk[data-pt] { cursor: pointer; }
+.scatter.js .mk.hot { fill-opacity: .4; }
+.scatter .pl { font-size: 11px; }
+
+/* slope / bump chart */
+.slope .col { font-size: 12px; font-weight: 600; fill: var(--fg); }
+.slope .sl { stroke: var(--s); stroke-width: 2; opacity: .85; }
+.slope .pl { font-size: 11px; }
+
+/* tooltip (shared) */
+.viz-tip { position: absolute; pointer-events: none; display: none; background: var(--bg); color: var(--fg); border: 1px solid var(--rule); border-radius: 5px; padding: .35rem .55rem; font-size: .75rem; line-height: 1.6; white-space: nowrap; z-index: 2; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+.viz-tip .d { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: .35em; vertical-align: -1px; }
+.viz-tip b { font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+	.scatter .mk { transition: none; }
+}

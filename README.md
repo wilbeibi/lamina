@@ -2,8 +2,9 @@
 
 A small static site generator for long-form notes and reports. It is the
 build pipeline of [dump](https://dump.wilbeibi.com) pulled out into its own
-repository, with the saait + smu stage replaced by [md4c](https://github.com/mity/md4c)
-and one Python file, so the same framework can run any number of sites (work
+repository, with the saait + smu stage replaced by
+[markdown-it-py](https://github.com/executablebooks/markdown-it-py) and one
+Python file, so the same framework can run any number of sites (work
 notes, a second research site, a wiki) without carrying dump's content or
 writing contract along.
 
@@ -17,9 +18,16 @@ a link checker, and a dev server.
 
 ## Requirements
 
-- Python ≥ 3.11 (stdlib only)
-- md4c: `sudo pacman -S md4c` on Arch, `brew install md4c` on macOS
+- [uv](https://docs.astral.sh/uv/): `pacman -S uv`, `brew install uv`, or
+  `curl -LsSf https://astral.sh/uv/install.sh | sh`
 - git, optional: created/updated timestamps come from the site's history
+
+Nothing else. `folio` is a uv script: the shebang installs its own Python and
+its three pure-Python dependencies (declared inline, PEP 723) into a cached
+environment on first run, so `git clone && make` works on a bare machine. No
+system packages, no venv to manage, no `pip install`. To run it under an
+interpreter you manage instead, install those dependencies and use
+`python3 folio`.
 
 ## Quickstart
 
@@ -90,7 +98,7 @@ missing = "no {name} version yet"
 | `# Title` first line | page title; the line is removed from the body |
 | first paragraph | `<meta description>`, index summary, link-preview text |
 | `## Heading` | `id` = heading text with spaces as `-` (CJK kept), deep-linkable, dedup'd |
-| `[text](other.html#Heading)` | link checked at build time; hover shows the target's heading + first paragraph |
+| `[text](other.html#Heading)` | link checked at build time; hover shows the target's heading + first paragraph. Encode spaces in a URL as `%20` |
 | `[[Term]]`, `[[Term\|label]]` | link to the glossary page's `## Term` with a hover popup of its first paragraph; `[[slug]]` / `[[slug#Heading]]` link pages |
 | `text[^n]` + `[^n]: note` | superscript with hover popup, endnote list at the bottom |
 | GFM `\| table \|` | sortable table (click a header), stays within the reading column and scrolls when needed |
@@ -102,7 +110,7 @@ missing = "no {name} version yet"
 | `<div class="viz">…<script>` | any raw HTML + inline script; page assets live in `pages/<cat>/<date>-<slug>/` and are served at `/slug/` |
 | `<details>` | collapsible, Markdown inside works |
 | `> [!NOTE]`, `[!IMPORTANT]`, `[!WARNING]` | a restrained callout; an optional title follows the marker |
-| `~~text~~`, `<del>` | strikethrough |
+| `~~text~~`, `<del>` | strikethrough; a lone `~` stays literal, so `~90%` is safe in prose |
 | `<ins datetime="…" data-d="MM-DD">` | revision mark: left colour bar and margin date badge |
 | `<div class="errata">` | greyed correction log at the bottom |
 | `---` | `<hr>` |
@@ -192,10 +200,12 @@ indexes, same file list as today). To switch:
 4. Update `AGENTS.md`: tables and fences are plain Markdown now, blank lines
    inside HTML blocks are fine, `~~` works, footnotes and `[[terms]]` exist.
 5. `make` and diff `output/` against the previous build; the differences are
-   `&quot;` escaping, properly closed `<p>` tags, and percent-encoded anchors.
+   `&quot;` escaping and properly closed `<p>` tags. Twenty pages also gain back
+   a `~` that the old md4c stage ate: it read a lone `~` as strikethrough and
+   opened a `<del>` that collided with the page's own revision marks.
 
 ## Deliberately absent
 
 Search, tags, comments, pagination, syntax highlighting, a plugin system,
-any build dependency beyond md4c and Python. Add a feature only when a page
+any build dependency uv cannot install. Add a feature only when a page
 needs it, and make it light up from the Markdown rather than from config.

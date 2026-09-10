@@ -1,4 +1,12 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "markdown-it-py~=4.2",
+#     "mdit-py-plugins~=0.6",
+#     "linkify-it-py~=2.2",
+# ]
+# ///
 """folio — build a plain, long-form static site from a directory of Markdown.
 
     pages/<category>/YYYY-MM-DD-slug[.lang].md   -> output/slug[.lang].html
@@ -11,8 +19,8 @@ No front matter: the filesystem carries the metadata (category = directory,
 date = filename prefix, language = filename suffix). The first `# ` line is the
 title, the first paragraph the description, timestamps come from git.
 
-Rendering: md4c (`md2html`, GitHub dialect + LaTeX math + wiki links), then a
-few passes here for what md4c lacks: footnotes, heading ids, mermaid fences,
+Rendering: markdown-it-py (GitHub dialect + LaTeX math + wiki links), then a
+few passes here for what it lacks: footnotes, heading ids, mermaid fences,
 link previews, glossary popups. Features light up per page when a page uses
 them; nothing is switched on per page by hand.
 
@@ -36,6 +44,10 @@ import urllib.parse
 import urllib.request
 from datetime import date as _date
 from pathlib import Path
+
+from markdown_it import MarkdownIt
+from mdit_py_plugins.dollarmath import dollarmath_plugin
+from mdit_py_plugins.tasklists import tasklists_plugin
 
 HERE = Path(__file__).resolve().parent
 THEME = HERE / 'theme'
@@ -298,22 +310,75 @@ def callouts(text):
     return '\n'.join(out)
 
 
-_MD2HTML = None
+# markdown-it-py stands in for md4c, with the two shims the passes below expect:
+# x-wikilink and x-equation, as md4c's --fwiki-links / --flatex-math emitted them.
+_MD = {}
+
+
+def wikilinks(md):
+    """[[target]] and [[target|label]] -> <x-wikilink data-target="...">."""
+    def rule(state, silent):
+        src, pos = state.src, state.pos
+        if not src.startswith('[[', pos):
+            return False
+        end = src.find(']]', pos + 2)
+        if end < 0 or set('[]') & set(src[pos + 2:end]):
+            return False
+        target, _, label = src[pos + 2:end].partition('|')
+        if not silent:
+            t = state.push('wikilink', 'x-wikilink', 0)
+            t.attrSet('data-target', target.strip())
+            t.content = (label or target).strip()
+        state.pos = end + 2
+        return True
+
+    def render(self, tokens, idx, opts, env):
+        t = tokens[idx]                      # md4c escapes " but leaves ' alone
+        target = html.escape(t.attrGet('data-target'), quote=False).replace('"', '&quot;')
+        return (f'<x-wikilink data-target="{target}">'
+                f'{html.escape(t.content, quote=False)}</x-wikilink>')
+
+    md.inline.ruler.before('link', 'wikilink', rule)
+    md.add_render_rule('wikilink', render)
+
+
+def markdown(math):
+    if math not in _MD:
+        md = (MarkdownIt('commonmark', {'html': True, 'linkify': True, 'xhtmlOut': False})
+              .enable(['table', 'strikethrough', 'linkify'])
+              .use(tasklists_plugin).use(wikilinks))
+        # autolink only what md4c's --fpermissive-{url,www}-autolinks did: a real
+        # scheme. Never a bare e-mail, never a bare domain -- prose is full of
+        # "fly.io" and "DESIGN.md" that must stay text.
+        md.linkify.set({'fuzzy_email': False, 'fuzzy_link': False})
+        md.add_render_rule('s_open', lambda s, t, i, o, e: '<del>')
+        md.add_render_rule('s_close', lambda s, t, i, o, e: '</del>')
+        if math:
+            # md4c's math rules: no space inside the delimiters, no digit hugging
+            # them -- keeps "$5-$10" and "raised $Y @ $Z" in prose out of math
+            md.use(dollarmath_plugin, double_inline=True,
+                   allow_space=False, allow_digits=False)
+
+            def eq(kind, wrap, tail=''):
+                def rule(self, tokens, idx, opts, env):
+                    body = f'<x-equation{kind}>{html.escape(tokens[idx].content)}</x-equation>'
+                    label = tokens[idx].info
+                    body += f' ({label})' if tail and label else ''
+                    return f'<p>{body}</p>\n' if wrap else body
+                return rule
+
+            # all four dollarmath tokens: unhandled ones fall back to the plugin's
+            # own <div class="math">, which the passes below would never see
+            md.add_render_rule('math_inline', eq('', False))
+            md.add_render_rule('math_inline_double', eq(' type="display"', False))
+            md.add_render_rule('math_block', eq(' type="display"', True))
+            md.add_render_rule('math_block_label', eq(' type="display"', True, tail=True))
+        _MD[math] = md
+    return _MD[math]
 
 
 def md2html(text, math=True):
-    global _MD2HTML
-    if _MD2HTML is None:
-        _MD2HTML = shutil.which('md2html')
-        if not _MD2HTML:
-            die('md2html (md4c) not found: `sudo pacman -S md4c` / `brew install md4c`')
-    # explicit GFM pieces rather than --github: that would also autolink e-mail addresses
-    args = [_MD2HTML, '--ftables', '--fstrikethrough', '--ftasklists', '--fpermissive-url-autolinks',
-            '--fpermissive-www-autolinks', '--fwiki-links'] + (['--flatex-math'] if math else [])
-    r = subprocess.run(args, input=text, capture_output=True, text=True)
-    if r.returncode:
-        die(f'md2html failed: {r.stderr.strip()}')
-    return r.stdout
+    return markdown(math).render(text)
 
 
 def inline_html(text, math=True):

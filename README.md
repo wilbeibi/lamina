@@ -200,9 +200,7 @@ indexes, same file list as today). To switch:
 4. Update `AGENTS.md`: tables and fences are plain Markdown now, blank lines
    inside HTML blocks are fine, `~~` works, footnotes and `[[terms]]` exist.
 5. `make` and diff `output/` against the previous build; the differences are
-   `&quot;` escaping and properly closed `<p>` tags. Twenty pages also gain back
-   a `~` that the old md4c stage ate: it read a lone `~` as strikethrough and
-   opened a `<del>` that collided with the page's own revision marks.
+   `&quot;` escaping and properly closed `<p>` tags.
 
 ## Deliberately absent
 

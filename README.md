@@ -1,209 +1,161 @@
 # folio
 
-A small static site generator for long-form notes and reports. It is the
-build pipeline of [dump](https://dump.wilbeibi.com) pulled out into its own
-repository, with the saait + smu stage replaced by
-[markdown-it-py](https://github.com/executablebooks/markdown-it-py) and one
-Python file, so the same framework can run any number of sites (work
-notes, a second research site, a wiki) without carrying dump's content or
-writing contract along.
+Publish long-form Markdown as a plain static site without front matter or a
+CMS. Folio derives page metadata from source paths and content. It writes
+ordinary files you can serve anywhere.
 
-What stays from dump: the look (system font, 46rem measure, light/dark from the
-OS), no front matter, categories as directories, git-derived timestamps, flat
-URLs, bilingual pages by filename suffix, sortable tables, the `.viz` chart
-convention, revision marks and errata blocks. What is new: real Markdown
-tables and fenced code, footnotes, mermaid, MathJax, hover popups (link
-previews, glossary terms, footnotes), per-page assets for embedded animations,
-a link checker, and a dev server.
+It is for personal notes, research reports, and small documentation sites that
+value durable source files and a restrained reading layout. It is not a blog
+platform, CMS, search service, or plugin host.
 
-## Requirements
+## Start a site
 
-- [uv](https://docs.astral.sh/uv/): `pacman -S uv`, `brew install uv`, or
-  `curl -LsSf https://astral.sh/uv/install.sh | sh`
-- git, optional: created/updated timestamps come from the site's history
+Folio needs [uv](https://docs.astral.sh/uv/). The `folio` script requests
+Python 3.11 or later and declares its dependencies inline, so uv creates and
+reuses a cached environment on first run. Git is optional but supplies created
+and updated timestamps when available.
 
-Nothing else. `folio` is a uv script: the shebang installs its own Python and
-its three pure-Python dependencies (declared inline, PEP 723) into a cached
-environment on first run, so `git clone && make` works on a bare machine. No
-system packages, no venv to manage, no `pip install`. To run it under an
-interpreter you manage instead, install those dependencies and use
-`python3 folio`.
+From a checkout of this repository, create a site in another directory:
 
-## Quickstart
+```sh
+mkdir -p ~/src/worknotes/pages/notes ~/src/worknotes/pages/reports
+cd ~/src/worknotes
+cp /path/to/folio/example/site.toml .
+/path/to/folio/folio new notes first-note --title "First note"
+/path/to/folio/folio build
+```
 
-    mkdir -p ~/src/worknotes/pages/notes && cd ~/src/worknotes
-    cp ~/src/folio/example/site.toml ~/src/folio/example/Makefile .   # edit name/url/categories
-    ~/src/folio/folio new notes first-note --title "First note"
-    make            # -> output/
-    make serve      # http://127.0.0.1:8000/
-    make watch      # rebuild on save
-    make check      # build, fail on dead links / anchors / unresolved [[terms]]
+Edit `site.toml` before publishing, especially its `name`, `description`,
+`url`, and category definitions. The build writes the site to `output/`.
 
-`example/` is a complete site that uses every feature; `make example` in this
-directory builds it. Read `example/pages/notes/2026-09-08-hello-folio.md`
-first: it is the authoring reference in one page.
+For a local preview, rebuild and serve on the loopback interface:
 
-## A site
+```sh
+/path/to/folio/folio serve
+# http://127.0.0.1:8000/
+```
 
-    site.toml                       name, url, languages, categories
-    pages/<category>/YYYY-MM-DD-slug.md         a page
-    pages/<category>/YYYY-MM-DD-slug.<lang>.md  its translation
-    pages/<category>/YYYY-MM-DD-slug/           its assets -> /slug/
-    static/                         copied to output root (favicon, images)
-    theme/                          optional overrides of framework theme files
-    output/                         generated, gitignored, point the web server here
+Use `folio watch` to rebuild after source changes. Use `folio check` in CI or
+before publishing; it fails on build warnings, including bad links, missing
+anchors, and unresolved wiki links. Run `folio --help` for the full interface.
 
-The filesystem is the metadata. Category is the directory, date is the
-filename prefix, language is the filename suffix, title is the first `# `
-line, description is the first paragraph, created/updated come from git
-(`--follow`, and renames do not count as updates). Output is flat:
-`slug.html`, `slug.en.html`, so moving a page between categories never breaks
-a link. A filename starting with `_` is a draft and is skipped.
+`example/` is a working site that exercises every supported feature:
 
-### site.toml
+```sh
+make example
+make check
+```
+
+## Site layout
+
+```text
+site.toml                                     site and category settings
+pages/<category>/YYYY-MM-DD-slug.md            canonical page
+pages/<category>/YYYY-MM-DD-slug.<lang>.md     translation
+pages/<category>/YYYY-MM-DD-slug/              files served at /slug/
+static/                                        copied to the output root
+theme/                                         optional framework overrides
+output/                                        generated site; point a web server here
+```
+
+The first `[[category]]` is the landing page at `/`; later categories become
+`/<category>.html`. Canonical pages build as `/slug.html`; translations build
+as `/slug.<lang>.html`. URLs stay flat when you move a page between categories.
+
+The first `# ` heading becomes the page title and is removed from the body.
+The first prose paragraph becomes the description used by indexes, metadata,
+and link previews. A filename beginning with `_` is a draft and is skipped.
+
+Here is a minimal configuration:
 
 ```toml
-name = "dump"
-description = "research dumps"
-url = "https://dump.wilbeibi.com"   # needed for the atom feed
-author = "wilbeibi"
-lang = "en"            # default for categories
-glossary = "glossary"  # slug of the page whose h2/h3 define [[terms]]
-toc_min = 3            # toc = true categories get a TOC from this many h2s
-
-[[category]]           # the first category is the landing page (/)
-dir = "reports"
-title = "reports"
-description = "shown under the index heading"
-lang = "zh"
-translations = ["en"]  # reports/x.en.md builds x.en.html; nav shows 中文 · EN
-atom = true            # included in /atom.xml
-toc = false
-math = true            # $…$ spans; off if a category writes many bare $ signs
-glossary = "glossary"  # per-category override
+name = "worknotes"
+description = "notes and reports"
+url = "https://notes.example.com" # required for an Atom feed
+author = "Your name"
+lang = "en"
+glossary = "glossary"              # page whose h2/h3 headings define [[terms]]
 
 [[category]]
-dir = "ideas"          # index at /ideas.html, English, untranslated
-
-[langs.en]             # labels; en and zh have defaults
-name = "EN"
-updated = "updated"
-missing = "no {name} version yet"
+dir = "notes"
+title = "notes"
+description = "notes, plans, and reports"
+atom = true
+toc = true
 ```
 
-## What you write, what you get
+See [example/site.toml](example/site.toml) for Chinese-canonical pages with
+English translations and the remaining options.
 
-| you write | you get |
+## Write pages
+
+Folio uses GitHub-flavored Markdown. It supports tables, fenced and indented
+code, strikethrough, footnotes, collapsible sections, and raw HTML. Links are
+checked during a build.
+
+```markdown
+# A page title
+
+This first paragraph is the page description.
+
+## A section
+
+See [another page](other-page.html#A-section). Link a glossary term as
+[[Term]] or [[Term|visible label]].
+
+[^source]: Footnotes support Markdown.
+```
+
+Heading IDs replace spaces with `-`, preserve CJK characters, and are
+deduplicated. Encode spaces in link URLs as `%20`.
+
+The following features activate only when their Markdown appears:
+
+| Source | Result |
 |---|---|
-| `# Title` first line | page title; the line is removed from the body |
-| first paragraph | `<meta description>`, index summary, link-preview text |
-| `## Heading` | `id` = heading text with spaces as `-` (CJK kept), deep-linkable, dedup'd |
-| `[text](other.html#Heading)` | link checked at build time; hover shows the target's heading + first paragraph. Encode spaces in a URL as `%20` |
-| `[[Term]]`, `[[Term\|label]]` | link to the glossary page's `## Term` with a hover popup of its first paragraph; `[[slug]]` / `[[slug#Heading]]` link pages |
-| `text[^n]` + `[^n]: note` | superscript with hover popup, endnote list at the bottom |
-| GFM `\| table \|` | sortable table (click a header), stays within the reading column and scrolls when needed |
-| `<div class="t"><table>…` | the same, for hand-written tables |
-| `<div class="t wide"><table>…` | explicitly let a hand-written comparison table break out on wide screens |
-| ```` ```lang ```` fences | `<pre><code class="language-lang">` (no highlighting, by design) |
-| ```` ```mermaid ```` | diagram rendered client-side, theme follows the OS, source is the no-JS fallback |
-| `$x$`, `$$…$$` | MathJax (tex-svg), loaded only on pages with math; `$5` and `$10` in prose are left alone |
-| `<div class="viz">…<script>` | any raw HTML + inline script; page assets live in `pages/<cat>/<date>-<slug>/` and are served at `/slug/` |
-| `<details>` | collapsible, Markdown inside works |
-| `> [!NOTE]`, `[!IMPORTANT]`, `[!WARNING]` | a restrained callout; an optional title follows the marker |
-| `~~text~~`, `<del>` | strikethrough; a lone `~` stays literal, so `~90%` is safe in prose |
-| `<ins datetime="…" data-d="MM-DD">` | revision mark: left colour bar and margin date badge |
-| `<div class="errata">` | greyed correction log at the bottom |
-| `---` | `<hr>` |
+| `\| table \|` | Sortable table that scrolls within the reading column. |
+| A `mermaid` fenced block | Client-rendered Mermaid diagram with source as the no-JavaScript fallback. |
+| `$x$` or `$$...$$` | MathJax SVG math; bare currency such as `$5` remains prose. |
+| `> [!NOTE]`, `[!IMPORTANT]`, `[!WARNING]` | A callout for context, an invariant, or a risk. |
+| `<div class="viz">…</div>` | A page-local visualization or script. |
+| `<ins datetime="…" data-d="MM-DD">` | Revision mark with a date badge. |
+| `<div class="errata">` | Correction log styling. |
 
-Everything JS-related is progressive enhancement: the page is complete
-without it. Each page loads `folio.js` (≈7 KB: sorting, popups, minimap,
-mermaid bootstrap, helpers) and, only when used, `charts.js`, mermaid, MathJax.
+Use a page asset directory for scripts, raw data, and other material you want
+to publish:
 
-Callouts intentionally have only three meanings: `NOTE` adds context,
-`IMPORTANT` states a conclusion or invariant, and `WARNING` names a risk or
-failure mode. Other `[!TYPE]` markers remain ordinary blockquotes.
-
-### Supporting material
-
-Keep raw scripts, result JSON, and other publishable evidence in the page's
-matching asset directory. Link the files explicitly from the page rather than
-asking Folio to infer a references section:
-
-```
+```text
 pages/notes/2026-09-09-report.md
 pages/notes/2026-09-09-report/probe.sh
 pages/notes/2026-09-09-report/results.json
 ```
 
-```markdown
-## Materials
+Those files are copied verbatim to `/report/`. Link them explicitly from the
+page. Do not place credentials or private source data in an asset directory.
 
-- [Probe script](report/probe.sh)
-- [Raw results](report/results.json)
+## Theme and deployment
+
+Folio supplies a system-font layout with OS-controlled light and dark themes.
+To override a framework file, add a same-named file under the site's `theme/`:
+`style.css`, `folio.js`, `charts.js`, `favicon.svg`, `page.html`, `index.html`,
+`index-item.html`, `atom.xml`, or `atom-item.xml`. Add `theme/site.css` to
+append site-specific CSS without replacing the base stylesheet.
+
+`output/` contains only static files. Serve it with Caddy, nginx, or any
+static-file host.
+
+Mermaid and MathJax normally load from their pinned jsDelivr versions. To
+self-host them, run this from the Folio checkout before building:
+
+```sh
+/path/to/folio/folio vendor
 ```
 
-The files are copied verbatim to `/report/`; `folio check` verifies explicit
-links into page asset directories. Everything in such a directory is public,
-so it must not contain credentials or private raw data.
+Folio copies only the vendor files used by the site into `output/vendor/`.
 
-### Embedded animations
+## Limits
 
-A page script gets `window.folio`:
-
-```js
-folio.onVisible(el, fn, {repeat, leave, threshold})  // start when scrolled into view
-folio.reducedMotion   // true when the OS asks for no animation: draw one frame
-folio.dark()          // current theme;  folio.onThemeChange(fn)
-folio.css('--s1', el) // read a palette colour off the page
-```
-
-`example/pages/notes/2026-09-08-hello-folio/anim.js` is the pattern: start on
-view, pause off view, static under reduced motion, colours from the CSS
-palette so light and dark both work.
-
-### Self-hosting mermaid and MathJax
-
-Pages that need them load pinned versions from jsDelivr (see `vendor.txt`).
-`folio vendor` downloads them into `theme/vendor/` (gitignored); from then on
-the build copies only the ones a site actually uses into `output/vendor/`, so
-a tailnet-only site works without internet.
-
-## Theme
-
-`theme/` holds `style.css`, `folio.js`, `charts.js`, `favicon.svg`, and the
-templates `page.html`, `index.html`, `index-item.html`, `atom.xml`,
-`atom-item.xml` with `{{var}}` placeholders. A site can put a file of the same
-name in its own `theme/` to replace it, or a `theme/site.css` to append CSS
-without replacing the base. Vars available to `page.html`: `lang site_name
-title description head nav meta toc content pops footer`; to `index.html`:
-`lang site_name title description head brand secnav items footer`.
-
-## Deploying
-
-`output/` is plain files: point Caddy, nginx or `python3 -m http.server` at
-it. dump keeps its Caddy vhost; a work machine can use `make serve`.
-
-## Migrating dump onto folio
-
-Not done yet; the content already builds cleanly through folio (75 pages, 3
-indexes, same file list as today). To switch:
-
-1. Add a `site.toml` to `~/dump` (reports zh+en with atom and glossary
-   `glossary`; ideas en; investment en+zh with glossary `invest-glossary`) and
-   replace the `Makefile` with `example/Makefile` plus the `translate` targets.
-2. `folio check --root ~/dump` lists 33 dead in-page anchors that the old
-   pipeline never checked (links written as lowercase GitHub-style slugs, or
-   headings edited after the link). Fix or drop them.
-3. Delete `mkpages.sh`, `templates/`, `config.cfg`, `statics/`, `style.css`
-   (now in the theme; put dump-only rules in `theme/site.css`). Keep
-   `translate.sh`, it only reads `pages/`.
-4. Update `AGENTS.md`: tables and fences are plain Markdown now, blank lines
-   inside HTML blocks are fine, `~~` works, footnotes and `[[terms]]` exist.
-5. `make` and diff `output/` against the previous build; the differences are
-   `&quot;` escaping and properly closed `<p>` tags.
-
-## Deliberately absent
-
-Search, tags, comments, pagination, syntax highlighting, a plugin system,
-any build dependency uv cannot install. Add a feature only when a page
-needs it, and make it light up from the Markdown rather than from config.
+Folio deliberately does not provide search, tags, comments, pagination,
+syntax highlighting, or a plugin system. It also does not manage hosting or
+deployments. Add a feature only when the Markdown and generated files remain
+easy to inspect and move.

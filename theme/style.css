@@ -30,6 +30,11 @@
 	}
 }
 
+:root {
+	--col-left: max(16rem, calc(50vw - 23rem));
+	--wide: min(64rem, calc(100vw - var(--col-left) - 2rem));
+}
+
 body {
 	background: var(--bg);
 	color: var(--fg);
@@ -262,15 +267,33 @@ sup.fn a:target { outline: 1px solid var(--link); }
 .toc a:hover { color: var(--fg); }
 .toc a[aria-current="location"] { border-left-color: var(--link); color: var(--fg); font-weight: 600; }
 
-@media (min-width: 78rem) {
-	.toc {
-		left: max(1rem, calc(50% - 39rem));
+/* Sidebar mode. The column stops being centered below 78rem and is pinned
+   16rem from the left instead, which is the narrowest offset that still fits
+   13rem of minimap plus a 2rem gutter -- otherwise the whole left half of a
+   1100px window sits empty while the contents block eats the top of the page.
+   At 78rem and up max() picks the centered value again, so the two regimes
+   meet without a jump. :has() gates it: a page with no TOC stays centered, and
+   a browser without :has() keeps the inline block. */
+@media (min-width: 64rem) {
+	body:has(nav.toc) {
+		margin-left: var(--col-left);
+		margin-right: auto;
+	}
+	body:has(nav.toc) .toc {
+		left: max(1rem, calc(50vw - 39rem));
 		margin: 0;
 		max-height: calc(100vh - 4rem);
 		overflow-y: auto;
 		position: fixed;
 		top: 2rem;
 		width: 13rem;
+	}
+	/* A breakout table is centered on the column by default, which would slide
+	   it under the fixed minimap. Beside a sidebar it grows to the right only,
+	   into the space the column does not use. */
+	body:has(nav.toc) .t.wide {
+		width: var(--wide);
+		margin-left: 0;
 	}
 }
 

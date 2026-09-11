@@ -64,8 +64,7 @@ nav {
 
 /* Two toggles share one shape: the language switch on a page (中文 · EN) and the
    section switch on an index (reports · ideas). Current item emphasized, the
-   other a link (or muted, when a translation doesn't exist yet). The language
-   toggle's structure/logic is precomputed in mkpages.sh. */
+   other a link (or muted, when a translation doesn't exist yet). */
 .langnav, .secnav { white-space: nowrap; }
 .langnav strong, .secnav strong { color: var(--fg); font-weight: 600; }
 .langnav .sep, .secnav .sep { color: var(--rule); margin: 0 .4rem; }
@@ -307,8 +306,12 @@ div.math { overflow-x: auto; margin: 1rem 0; }
 mjx-container[display="true"] { margin: .5rem 0 !important; }
 
 /* Embedded animations / custom blocks: <div class="viz"> is a plain container;
-   canvas + svg scale to the column. */
-.viz { margin: 1.25rem 0; }
+   canvas + svg scale to the column. --s1..--s8 is a light/dark-aware palette
+   page scripts may read (folio.css('--s1', el)). */
+.viz { margin: 1.25rem 0; --s1:#2a78d6; --s2:#1baf7a; --s3:#d98c00; --s4:#008300; --s5:#6d5bd0; --s6:#e34948; --s7:#d1568f; --s8:#eb6834; }
+@media (prefers-color-scheme: dark) {
+	.viz { --s1:#4a95ef; --s2:#22b884; --s3:#e0a338; --s4:#28a745; --s5:#9b8cf0; --s6:#f06a6a; --s7:#e07bab; --s8:#f0794a; }
+}
 .viz canvas, .viz svg { max-width: 100%; height: auto; display: block; }
 figure { margin: 1.25rem 0; }
 figcaption { color: var(--muted); font-size: .85rem; margin-top: .4rem; }
@@ -316,50 +319,3 @@ figcaption { color: var(--muted); font-size: .85rem; margin-top: .4rem; }
 /* GFM task lists */
 li.task-list-item { list-style: none; margin-left: -1.3rem; }
 li.task-list-item input { margin-right: .4rem; }
-
-/* ── Charts (.viz-root) ───────────────────────────────────────────────
-   Shared by every post. Server renders static SVG; charts.js layers a
-   hover tooltip on top (progressive enhancement, no-JS stays readable).
-   A model keeps the same --s* colour across every chart on a page. */
-.viz-root { --s1:#2a78d6; --s2:#1baf7a; --s3:#d98c00; --s4:#008300; --s5:#6d5bd0; --s6:#e34948; --s7:#d1568f; --s8:#eb6834; --grid:#e6e5df; --axis:#c3c2b7; }
-@media (prefers-color-scheme: dark) {
-	.viz-root { --s1:#4a95ef; --s2:#22b884; --s3:#e0a338; --s4:#28a745; --s5:#9b8cf0; --s6:#f06a6a; --s7:#e07bab; --s8:#f0794a; --grid:#2c2c2a; --axis:#3a3a37; }
-}
-.viz-root { margin: 1.2rem 0; padding: .7rem .5rem .4rem; border: 1px solid var(--rule); border-radius: 8px; position: relative; }
-.viz-root figcaption { font-size: .82rem; margin: 0 0 .5rem .2rem; display: flex; flex-wrap: wrap; gap: .3rem .9rem; align-items: baseline; }
-.viz-root .leg { display: inline-flex; gap: .7rem; flex-wrap: wrap; color: var(--muted); }
-.viz-root .li { display: inline-flex; align-items: center; gap: .3rem; }
-.viz-root.js .li { cursor: pointer; user-select: none; }
-.viz-root .li.off { opacity: .35; text-decoration: line-through; }
-.viz-root .sw { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
-.viz-root .note { color: var(--muted); font-size: .75rem; }
-.viz-root .tick { font-size: 10px; fill: var(--muted); font-variant-numeric: tabular-nums; }
-.viz-root .lbl { font-size: 10.5px; fill: var(--fg); }
-
-/* line charts */
-.viz-root .axis { stroke: var(--axis); }
-.viz-root .grid { stroke: var(--grid); }
-.viz-root .axl { font-size: 10px; fill: var(--muted); }
-
-/* scatter (quality vs cost) */
-.scatter .front { fill: none; stroke: var(--axis); stroke-width: 1.4; stroke-dasharray: 4 4; opacity: .7; }
-.scatter .front-dot { fill: var(--axis); }
-.scatter .mk { fill: var(--s); fill-opacity: .16; stroke: var(--s); stroke-width: 1.6; transition: fill-opacity .12s; }
-.scatter .ring { fill: none; stroke: var(--s); stroke-width: 1; opacity: .5; }
-.scatter.js .mk[data-pt] { cursor: pointer; }
-.scatter.js .mk.hot { fill-opacity: .4; }
-.scatter .pl { font-size: 11px; }
-
-/* slope / bump chart */
-.slope .col { font-size: 12px; font-weight: 600; fill: var(--fg); }
-.slope .sl { stroke: var(--s); stroke-width: 2; opacity: .85; }
-.slope .pl { font-size: 11px; }
-
-/* tooltip (shared) */
-.viz-tip { position: absolute; pointer-events: none; display: none; background: var(--bg); color: var(--fg); border: 1px solid var(--rule); border-radius: 5px; padding: .35rem .55rem; font-size: .75rem; line-height: 1.6; white-space: nowrap; z-index: 2; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
-.viz-tip .d { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: .35em; vertical-align: -1px; }
-.viz-tip b { font-weight: 600; }
-
-@media (prefers-reduced-motion: reduce) {
-	.scatter .mk { transition: none; }
-}

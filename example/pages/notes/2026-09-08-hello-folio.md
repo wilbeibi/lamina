@@ -4,7 +4,7 @@ This page exercises every feature the framework has. The first paragraph is the 
 
 ## Prose, links, footnotes
 
-Internal links get a hover preview at build time: see [the second note](second-note.html) or a section of it, [its method](second-note.html#Method). Hover either. A footnote[^why] shows on hover too and still lists at the bottom. Terms in double brackets resolve against the glossary page: [[Static site]], [[Progressive enhancement|enhanced progressively]]. An unknown term like [[nope]] is flagged at build time and rendered muted.
+Internal links get a hover preview at build time: see [the second note](second-note.html) or a section of it, [its method](second-note.html#Method). Hover either. A footnote[^why] shows on hover too and still lists at the bottom. Terms in double brackets resolve against the glossary page: [[Static site]], [[Progressive enhancement|enhanced progressively]]. An unknown term like `[[nope]]` would be flagged at build time and rendered muted.
 
 Prices in prose are safe with math on: $1.5B raised, $2 per seat, range $5-$10.
 
@@ -16,7 +16,7 @@ Third-level headings appear indented in the contents minimap without crowding it
 
 ## Tables
 
-GFM pipe tables work now (they didn't under smu). Headers sort on click, numbers compare as numbers.
+GFM pipe tables. Headers sort on click, numbers compare as numbers.
 
 | project | stars | growth | note |
 |---|---|---|---|

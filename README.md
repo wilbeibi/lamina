@@ -137,7 +137,7 @@ page. Do not place credentials or private source data in an asset directory.
 
 Folio supplies a system-font layout with OS-controlled light and dark themes.
 To override a framework file, add a same-named file under the site's `theme/`:
-`style.css`, `folio.js`, `charts.js`, `favicon.svg`, `page.html`, `index.html`,
+`style.css`, `folio.js`, `favicon.svg`, `page.html`, `index.html`,
 `index-item.html`, `atom.xml`, or `atom-item.xml`. Add `theme/site.css` to
 append site-specific CSS without replacing the base stylesheet.
 

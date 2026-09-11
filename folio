@@ -69,10 +69,8 @@ def die(msg, code=1):
 # ----------------------------------------------------------------- config --
 
 LANG_DEFAULTS = {
-    'en': {'name': 'EN', 'updated': 'updated', 'sort': 'click to sort',
-           'missing': 'no {name} version yet', 'footnotes': 'Notes'},
-    'zh': {'name': '中文', 'updated': '更新', 'sort': '点击排序',
-           'missing': '暂无{name}版', 'footnotes': '注释'},
+    'en': {'name': 'EN', 'updated': 'updated', 'missing': 'no {name} version yet'},
+    'zh': {'name': '中文', 'updated': '更新', 'missing': '暂无{name}版'},
 }
 
 SITE_DEFAULTS = {
@@ -155,6 +153,10 @@ def discover(root, site):
         if p.out in seen:
             die(f'{p.src} and {seen[p.out].src} would both build {p.out}')
         seen[p.out] = p
+    canon = {(p.cat['dir'], p.slug) for p in pages if p.canonical}
+    for p in pages:
+        if not p.canonical and (p.cat['dir'], p.slug) not in canon:
+            warn(f"{p.src.name}: translation without a {p.cat['lang']} canonical page")
     return pages
 
 
@@ -173,21 +175,31 @@ def strip_md(s):
 
 def parse(p):
     lines = p.src.read_text(encoding='utf-8').split('\n')
-    title, body = None, lines
+    title, body, fence = None, lines, None
     for i, ln in enumerate(lines):
-        if ln.startswith('# '):
+        f = FENCE.match(ln)
+        if fence:
+            if f and f.group(1)[0] == fence:
+                fence = None
+        elif f:
+            fence = f.group(1)[0]
+        elif ln.startswith('# '):
             title, body = ln[2:].strip(), lines[i + 1:]
             break
     p.title = title or p.slug
     p.body = '\n'.join(body)
-    p.description = ''
-    for ln in body:
-        s = ln.strip()
-        if not s or s[0] in '#<|>!$' or s.startswith(('```', '~~~', '[^', '- ', '* ', '+ ')) \
-                or re.match(r'^\d+\. ', s) or ln.startswith(('    ', '\t')):
-            continue
-        p.description = clip(strip_md(s), 160)
-        break
+
+
+CJK = r'[\u2e80-\u9fff\uf900-\ufaff\uff00-\uffef]'
+
+
+def describe(tokens):
+    """The first top-level paragraph, as plain text: the page description."""
+    for i, t in enumerate(tokens):
+        if t.type == 'paragraph_open' and t.level == 0:
+            s = re.sub(f'(?<={CJK})\n(?={CJK})', '', tokens[i + 1].content)
+            return clip(strip_md(s), 160)
+    return ''
 
 
 def clip(s, n):
@@ -209,7 +221,7 @@ CALLOUT_LINE = re.compile(r'^\s{0,3}> ?(.*)$')
 
 
 def footnotes(text):
-    """GFM-style footnotes (md4c has none). Returns (text, [(id, note_md)])."""
+    """GFM-style footnotes (not in markdown-it-py core). Returns (text, [(id, note_md)])."""
     lines = text.split('\n')
     kept, notes, fence, i = [], {}, None, 0
     while i < len(lines):
@@ -310,8 +322,8 @@ def callouts(text):
     return '\n'.join(out)
 
 
-# markdown-it-py stands in for md4c, with the two shims the passes below expect:
-# x-wikilink and x-equation, as md4c's --fwiki-links / --flatex-math emitted them.
+# [[wiki links]] render to a placeholder tag: resolving them needs every page
+# parsed first, so decorate() rewrites <x-wikilink> once the site is known.
 _MD = {}
 
 
@@ -333,7 +345,7 @@ def wikilinks(md):
         return True
 
     def render(self, tokens, idx, opts, env):
-        t = tokens[idx]                      # md4c escapes " but leaves ' alone
+        t = tokens[idx]
         target = html.escape(t.attrGet('data-target'), quote=False).replace('"', '&quot;')
         return (f'<x-wikilink data-target="{target}">'
                 f'{html.escape(t.content, quote=False)}</x-wikilink>')
@@ -347,32 +359,36 @@ def markdown(math):
         md = (MarkdownIt('commonmark', {'html': True, 'linkify': True, 'xhtmlOut': False})
               .enable(['table', 'strikethrough', 'linkify'])
               .use(tasklists_plugin).use(wikilinks))
-        # autolink only what md4c's --fpermissive-{url,www}-autolinks did: a real
-        # scheme. Never a bare e-mail, never a bare domain -- prose is full of
-        # "fly.io" and "DESIGN.md" that must stay text.
+        # autolink only a real scheme. Never a bare e-mail, never a bare domain --
+        # prose is full of "fly.io" and "DESIGN.md" that must stay text.
         md.linkify.set({'fuzzy_email': False, 'fuzzy_link': False})
         md.add_render_rule('s_open', lambda s, t, i, o, e: '<del>')
         md.add_render_rule('s_close', lambda s, t, i, o, e: '</del>')
         if math:
-            # md4c's math rules: no space inside the delimiters, no digit hugging
-            # them -- keeps "$5-$10" and "raised $Y @ $Z" in prose out of math
+            # no space inside the delimiters, no digit hugging them -- keeps
+            # "$5-$10" and "raised $Y @ $Z" in prose out of math
             md.use(dollarmath_plugin, double_inline=True,
                    allow_space=False, allow_digits=False)
 
-            def eq(kind, wrap, tail=''):
-                def rule(self, tokens, idx, opts, env):
-                    body = f'<x-equation{kind}>{html.escape(tokens[idx].content)}</x-equation>'
-                    label = tokens[idx].info
-                    body += f' ({label})' if tail and label else ''
-                    return f'<p>{body}</p>\n' if wrap else body
-                return rule
+            # MathJax delimiters, emitted directly. Display blocks get their own
+            # div (scrolls when wide); a labelled block stays inline in a <p> so
+            # the label can follow it.
+            def inline(self, tokens, idx, opts, env):
+                return f'<span class="math">\\({html.escape(tokens[idx].content)}\\)</span>'
 
-            # all four dollarmath tokens: unhandled ones fall back to the plugin's
-            # own <div class="math">, which the passes below would never see
-            md.add_render_rule('math_inline', eq('', False))
-            md.add_render_rule('math_inline_double', eq(' type="display"', False))
-            md.add_render_rule('math_block', eq(' type="display"', True))
-            md.add_render_rule('math_block_label', eq(' type="display"', True, tail=True))
+            def display(self, tokens, idx, opts, env):
+                return f'<span class="math">\\[{html.escape(tokens[idx].content.strip())}\\]</span>'
+
+            def block(self, tokens, idx, opts, env):
+                return f'<div class="math">\\[{html.escape(tokens[idx].content.strip())}\\]</div>\n'
+
+            def block_label(self, tokens, idx, opts, env):
+                return f'<p>{display(self, tokens, idx, opts, env)} ({tokens[idx].info})</p>\n'
+
+            md.add_render_rule('math_inline', inline)
+            md.add_render_rule('math_inline_double', display)
+            md.add_render_rule('math_block', block)
+            md.add_render_rule('math_block_label', block_label)
         _MD[math] = md
     return _MD[math]
 
@@ -390,7 +406,10 @@ def inline_html(text, math=True):
 def render_body(p):
     text, notes = footnotes(p.body)
     text = callouts(text)
-    h = md2html(text, p.cat['math'])
+    md, env = markdown(p.cat['math']), {}
+    tokens = md.parse(text, env)
+    h = md.renderer.render(tokens, md.options, env)
+    p.description = describe(tokens)
 
     # heading ids: the heading text itself, whitespace -> '-', deduped.
     used, heads = {}, []
@@ -415,30 +434,14 @@ def render_body(p):
     h = re.sub(r'<pre><code class="language-mermaid">(.*?)</code></pre>', mm, h, flags=re.S)
     p.mermaid = n[0] > 0
 
-    # $...$ / $$...$$ -> MathJax delimiters
-    k = [0]
-
-    def disp_block(m):
-        k[0] += 1
-        return f'<div class="math">\\[{m.group(1).strip()}\\]</div>'
-
-    def disp_inline(m):
-        k[0] += 1
-        return f'<span class="math">\\[{m.group(1).strip()}\\]</span>'
-
-    def inl(m):
-        k[0] += 1
-        return f'<span class="math">\\({m.group(1)}\\)</span>'
-    h = re.sub(r'<p><x-equation type="display">(.*?)</x-equation></p>', disp_block, h, flags=re.S)
-    h = re.sub(r'<x-equation type="display">(.*?)</x-equation>', disp_inline, h, flags=re.S)
-    h = re.sub(r'<x-equation>(.*?)</x-equation>', inl, h, flags=re.S)
-    p.math = k[0] > 0
+    p.math = 'class="math"' in h
 
     # GFM tables get the same scroll/breakout wrapper hand-written ones use
     h = re.sub(r'<table>\n<thead>(.*?)</table>', r'<div class="t"><table>\n<thead>\1</table></div>', h, flags=re.S)
 
     # footnotes section
     p.notes = [(ident, inline_html(md, p.cat['math'])) for ident, md in notes]
+    p.math = p.math or any('class="math"' in body for _, body in p.notes)
     if p.notes:
         items = ''.join(f'<li id="fn-{i}">{body} <a href="#fnref-{i}" class="fnback" aria-label="back">↩</a></li>'
                         for i, body in p.notes)
@@ -468,6 +471,7 @@ class Ctx:
     def __init__(self, root, site, pages, outdir):
         self.root, self.site, self.pages, self.outdir = root, site, pages, outdir
         self.by_out = {p.out: p for p in pages}
+        self.indexes = {c['index'] for c in site['category']}
         self.by_slug = {}
         for p in pages:
             self.by_slug.setdefault((p.cat['dir'], p.slug), {})[p.lang] = p
@@ -518,7 +522,7 @@ class Ctx:
 
 LINK_RE = re.compile(r'<a\b([^>]*?)\shref="([^"]*)"([^>]*)>')
 WL_RE = re.compile(r'<x-wikilink data-target="([^"]*)">(.*?)</x-wikilink>', re.S)
-INTERNAL_RE = re.compile(r'^/?([\w][\w.-]*\.html)?(?:#(.*))?$')
+INTERNAL_RE = re.compile(r'^/?([^/#?]+\.html)?(?:#(.*))?$')
 
 
 def page_asset(ctx, href):
@@ -576,17 +580,16 @@ def decorate(p, ctx):
         a1, href, a3 = m.groups()
         if 'data-pop' in a1 + a3:
             return m.group(0)
-        im = INTERNAL_RE.match(href)
+        im = INTERNAL_RE.match(urllib.parse.unquote(html.unescape(href)))
         if not im:
             known, exists = page_asset(ctx, href)
             if known and not exists:
                 warn(f'{p.src.name}: dead asset link {href}')
             return m.group(0)
         file, anchor = im.group(1), im.group(2) or ''
-        anchor = urllib.parse.unquote(html.unescape(anchor))
         tp = p if not file else ctx.by_out.get(file)
         if tp is None:
-            if not (ctx.outdir / file).exists() and not (ctx.root / 'static' / file).exists():
+            if file not in ctx.indexes and not (ctx.root / 'static' / file).exists():
                 warn(f'{p.src.name}: dead link {href}')
             return m.group(0)
         if anchor and anchor not in tp.pv and anchor not in tp.ids:
@@ -625,21 +628,15 @@ def git(root, *args):
 
 def stamps(p, root, site):
     rel = os.path.relpath(p.src, root)
-    first = (git(root, 'log', '--diff-filter=A', '--follow', '--format=%cI', '--', rel).splitlines() or [''])[-1]
-    last = git(root, 'log', '-1', '--diff-filter=M', '--follow', '--format=%cI', '--', rel)
-    created = p.date
-    if first and first[:10] == p.date:
-        created = f'{p.date} {first[11:16]}'
-    upd, atom = '', f'{p.date}T00:00:00Z'
-    if last:
-        atom = last
-        if last != first:
-            label = site['langs'][p.lang].get('updated', 'updated')
-            upd = f' · {label} <time datetime="{last[:10]}">{last[:10]} {last[11:16]}</time>'
-    elif first:
-        atom = first
-    p.meta = f'<time datetime="{p.date}">{created}</time>{upd}'
-    p.atom_updated = atom
+    log = git(root, 'log', '--follow', '--diff-filter=AM', '--format=%cI', '--', rel).splitlines()
+    first = log[-1] if log else ''           # the commit that added the file
+    last = log[0] if len(log) > 1 else ''    # the latest edit, if any
+    upd = ''
+    if last and last[:10] != p.date:
+        label = site['langs'][p.lang].get('updated', 'updated')
+        upd = f' · {label} <time datetime="{last[:10]}">{last[:10]}</time>'
+    p.meta = f'<time datetime="{p.date}">{p.date}</time>{upd}'
+    p.atom_updated = last or first or f'{p.date}T00:00:00Z'
 
 
 # ------------------------------------------------------------- templates --
@@ -703,8 +700,6 @@ def page_html(p, ctx):
         head.append(f'<script defer src="{ctx.vendor_url("tex-svg.js")}"></script>')
     if p.mermaid:
         head.append(f'<script defer src="{ctx.vendor_url("mermaid.min.js")}"></script>')
-    if 'class="viz-data"' in p.html:
-        head.append('<script defer src="/charts.js"></script>')
     head.append('<script defer src="/folio.js"></script>')
     footer = f'<a href="{href_of(p.cat)}">← {html.escape(p.cat["title"])}</a>'
     if ctx.feed:
@@ -811,7 +806,7 @@ def build(root, config=None, outdir=None):
     if extra.exists():
         css += '\n/* site.css */\n' + extra.read_text(encoding='utf-8')
     (out / 'style.css').write_text(css, encoding='utf-8')
-    for name in ('folio.js', 'charts.js', 'favicon.svg'):
+    for name in ('folio.js', 'favicon.svg'):
         f = theme_file(root, name)
         if f:
             shutil.copy(f, out / name)
@@ -819,8 +814,12 @@ def build(root, config=None, outdir=None):
         (out / 'vendor').mkdir()
         for f in ctx.vendor_used:
             shutil.copy(f, out / 'vendor' / f.name)
-    if (root / 'static').is_dir():
-        shutil.copytree(root / 'static', out, dirs_exist_ok=True)
+    static = root / 'static'
+    if static.is_dir():
+        for f in static.rglob('*.html'):
+            if f.relative_to(static).as_posix() in ctx.by_out or f.name in ctx.indexes:
+                warn(f'static/{f.relative_to(static)} shadows a generated page')
+        shutil.copytree(static, out, dirs_exist_ok=True)
     n = len(pages)
     print(f'folio: built {n} pages + {len(site["category"])} indexes -> {out}'
           + (f' ({len(WARNINGS)} warnings)' if WARNINGS else ''))
@@ -866,6 +865,8 @@ def cmd_watch(root, config, outdir):
                 build(root, config, outdir)
             except SystemExit:
                 pass
+            except Exception as e:
+                print(f'folio: build failed: {e!r}', file=sys.stderr)
         try:
             time.sleep(1)
         except KeyboardInterrupt:
@@ -877,7 +878,8 @@ def cmd_new(root, category, slug, title):
     cats = {c['dir']: c for c in site['category']}
     if category not in cats:
         die(f'unknown category {category!r}; site.toml has: {", ".join(cats)}')
-    slug = re.sub(r'[^a-z0-9.-]+', '-', slug.lower()).strip('-')
+    if not (slug := re.sub(r'[^a-z0-9.-]+', '-', slug.lower()).strip('-')):
+        die('slug has no ascii letters or digits; pass one explicitly')
     f = root / 'pages' / category / f'{_date.today().isoformat()}-{slug}.md'
     if f.exists():
         die(f'{f} exists')

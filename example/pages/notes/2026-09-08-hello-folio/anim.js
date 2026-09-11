@@ -20,8 +20,6 @@
     t += 0.03;
     if (!folio.reducedMotion) raf = requestAnimationFrame(frame);
   }
-  // .viz doesn't define --s*, so borrow the chart palette by tagging the container
-  c.parentNode.classList.add('viz-root');
   folio.onVisible(c, function () { if (!raf) frame(); }, {
     repeat: true, leave: function () { cancelAnimationFrame(raf); raf = null; }
   });

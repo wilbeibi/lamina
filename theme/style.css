@@ -80,6 +80,7 @@ h3 { font-size: 1rem; margin: 2rem 0 .5rem; }
 ul.index { list-style: none; padding: 0; }
 ul.index li { margin: .4rem 0; }
 ul.index time { color: var(--muted); font-size: .875rem; margin-right: .75rem; }
+ul.index .desc { display: block; color: var(--muted); font-size: .875rem; }
 
 code, pre {
 	background: var(--code-bg);

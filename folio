@@ -24,7 +24,7 @@ few passes here for what it lacks: footnotes, heading ids, mermaid fences,
 link previews, glossary popups. Features light up per page when a page uses
 them; nothing is switched on per page by hand.
 
-    folio build [--root DIR] [--config FILE] [-o DIR]   build the site
+    folio build [--root DIR] [-o DIR]                   build the site
     folio check                                          build, fail on warnings
     folio serve [--port N]                               serve output/ locally
     folio watch                                          rebuild on change
@@ -32,8 +32,8 @@ them; nothing is switched on per page by hand.
     folio vendor                                         self-host mermaid + MathJax
 """
 import argparse
+import functools
 import html
-import os
 import re
 import shutil
 import subprocess
@@ -42,6 +42,7 @@ import time
 import tomllib
 import urllib.parse
 import urllib.request
+from dataclasses import dataclass, field
 from datetime import date as _date
 from pathlib import Path
 
@@ -79,8 +80,8 @@ SITE_DEFAULTS = {
 }
 
 
-def load_site(root, config=None):
-    p = Path(config) if config else root / 'site.toml'
+def load_site(root):
+    p = root / 'site.toml'
     if not p.exists():
         die(f'no site config at {p}')
     cfg = tomllib.loads(p.read_text(encoding='utf-8'))
@@ -110,9 +111,32 @@ def load_site(root, config=None):
 
 # ------------------------------------------------------------------ pages --
 
+@dataclass(slots=True)
 class Page:
-    def __init__(self, **kw):
-        self.__dict__.update(kw)
+    src: Path
+    cat: dict
+    date: str
+    slug: str
+    lang: str
+    canonical: bool
+    out: str
+    assets: Path
+    # filled in by parse, render_body, stamps, decorate
+    title: str = ''
+    body: str = ''
+    description: str = ''
+    html: str = ''
+    headings: list = field(default_factory=list)   # (level, id, text)
+    notes: list = field(default_factory=list)      # (id, html)
+    mermaid: bool = False
+    math: bool = False
+    pv: dict = field(default_factory=dict)         # anchor -> (title, preview)
+    ids: set = field(default_factory=set)
+    meta: str = ''
+    atom_updated: str = ''
+    pops: str = ''
+    toc: str = ''
+    terms: dict | None = None                      # glossary pages only
 
 
 NAME_RE = re.compile(r'^(\d{4}-\d{2}-\d{2})-(.+)$')
@@ -126,7 +150,7 @@ def discover(root, site):
             warn(f'category directory missing: {d}')
             continue
         for md in sorted(d.glob('*.md')):
-            base = md.name[:-3]
+            base = md.stem
             if base.startswith('_'):
                 continue                      # draft
             m = NAME_RE.match(base)
@@ -146,8 +170,7 @@ def discover(root, site):
             canonical = lang == cat['lang']
             out = f'{slug}.html' if canonical else f'{slug}.{lang}.html'
             pages.append(Page(src=md, cat=cat, date=date, slug=slug, lang=lang,
-                              canonical=canonical, out=out, assets=d / f'{date}-{slug}',
-                              mermaid=False, math=False, headings=[], notes=[]))
+                              canonical=canonical, out=out, assets=d / f'{date}-{slug}'))
     seen = {}
     for p in pages:
         if p.out in seen:
@@ -161,16 +184,6 @@ def discover(root, site):
 
 
 TAG = re.compile(r'<[^>]+>')
-
-
-def strip_md(s):
-    s = re.sub(r'\[\[([^\]|]*)\|([^\]]*)\]\]', r'\2', s)
-    s = re.sub(r'\[\[([^\]]*)\]\]', r'\1', s)
-    s = re.sub(r'!?\[([^\]]*)\]\([^)]*\)', r'\1', s)
-    s = re.sub(r'\[\^[^\]]+\]', '', s)
-    s = TAG.sub('', s)
-    s = re.sub(r'[*_`~]+', '', s)
-    return re.sub(r'\s+', ' ', s).strip()
 
 
 def parse(p):
@@ -193,12 +206,13 @@ def parse(p):
 CJK = r'[\u2e80-\u9fff\uf900-\ufaff\uff00-\uffef]'
 
 
-def describe(tokens):
+def describe(md, tokens, env):
     """The first top-level paragraph, as plain text: the page description."""
     for i, t in enumerate(tokens):
         if t.type == 'paragraph_open' and t.level == 0:
-            s = re.sub(f'(?<={CJK})\n(?={CJK})', '', tokens[i + 1].content)
-            return clip(strip_md(s), 160)
+            s = html.unescape(TAG.sub('', md.renderer.renderInline(tokens[i + 1].children, md.options, env)))
+            s = re.sub(f'(?<={CJK})\n(?={CJK})', '', s)
+            return clip(re.sub(r'\s+', ' ', s).strip(), 160)
     return ''
 
 
@@ -220,7 +234,7 @@ CALLOUT_START = re.compile(r'^\s{0,3}>\s*\[!(NOTE|IMPORTANT|WARNING)\](?:\s+(.*?
 CALLOUT_LINE = re.compile(r'^\s{0,3}> ?(.*)$')
 
 
-def footnotes(text):
+def footnotes(text: str) -> tuple[str, list[tuple[str, str]]]:
     """GFM-style footnotes (not in markdown-it-py core). Returns (text, [(id, note_md)])."""
     lines = text.split('\n')
     kept, notes, fence, i = [], {}, None, 0
@@ -324,9 +338,6 @@ def callouts(text):
 
 # [[wiki links]] render to a placeholder tag: resolving them needs every page
 # parsed first, so decorate() rewrites <x-wikilink> once the site is known.
-_MD = {}
-
-
 def wikilinks(md):
     """[[target]] and [[target|label]] -> <x-wikilink data-target="...">."""
     def rule(state, silent):
@@ -354,43 +365,42 @@ def wikilinks(md):
     md.add_render_rule('wikilink', render)
 
 
+@functools.cache
 def markdown(math):
-    if math not in _MD:
-        md = (MarkdownIt('commonmark', {'html': True, 'linkify': True, 'xhtmlOut': False})
-              .enable(['table', 'strikethrough', 'linkify'])
-              .use(tasklists_plugin).use(wikilinks))
-        # autolink only a real scheme. Never a bare e-mail, never a bare domain --
-        # prose is full of "fly.io" and "DESIGN.md" that must stay text.
-        md.linkify.set({'fuzzy_email': False, 'fuzzy_link': False})
-        md.add_render_rule('s_open', lambda s, t, i, o, e: '<del>')
-        md.add_render_rule('s_close', lambda s, t, i, o, e: '</del>')
-        if math:
-            # no space inside the delimiters, no digit hugging them -- keeps
-            # "$5-$10" and "raised $Y @ $Z" in prose out of math
-            md.use(dollarmath_plugin, double_inline=True,
-                   allow_space=False, allow_digits=False)
+    md = (MarkdownIt('commonmark', {'html': True, 'linkify': True, 'xhtmlOut': False})
+          .enable(['table', 'strikethrough', 'linkify'])
+          .use(tasklists_plugin).use(wikilinks))
+    # autolink only a real scheme. Never a bare e-mail, never a bare domain --
+    # prose is full of "fly.io" and "DESIGN.md" that must stay text.
+    md.linkify.set({'fuzzy_email': False, 'fuzzy_link': False})
+    md.add_render_rule('s_open', lambda s, t, i, o, e: '<del>')
+    md.add_render_rule('s_close', lambda s, t, i, o, e: '</del>')
+    if math:
+        # no space inside the delimiters, no digit hugging them -- keeps
+        # "$5-$10" and "raised $Y @ $Z" in prose out of math
+        md.use(dollarmath_plugin, double_inline=True,
+               allow_space=False, allow_digits=False)
 
-            # MathJax delimiters, emitted directly. Display blocks get their own
-            # div (scrolls when wide); a labelled block stays inline in a <p> so
-            # the label can follow it.
-            def inline(self, tokens, idx, opts, env):
-                return f'<span class="math">\\({html.escape(tokens[idx].content)}\\)</span>'
+        # MathJax delimiters, emitted directly. Display blocks get their own
+        # div (scrolls when wide); a labelled block stays inline in a <p> so
+        # the label can follow it.
+        def inline(self, tokens, idx, opts, env):
+            return f'<span class="math">\\({html.escape(tokens[idx].content)}\\)</span>'
 
-            def display(self, tokens, idx, opts, env):
-                return f'<span class="math">\\[{html.escape(tokens[idx].content.strip())}\\]</span>'
+        def display(self, tokens, idx, opts, env):
+            return f'<span class="math">\\[{html.escape(tokens[idx].content.strip())}\\]</span>'
 
-            def block(self, tokens, idx, opts, env):
-                return f'<div class="math">\\[{html.escape(tokens[idx].content.strip())}\\]</div>\n'
+        def block(self, tokens, idx, opts, env):
+            return f'<div class="math">\\[{html.escape(tokens[idx].content.strip())}\\]</div>\n'
 
-            def block_label(self, tokens, idx, opts, env):
-                return f'<p>{display(self, tokens, idx, opts, env)} ({tokens[idx].info})</p>\n'
+        def block_label(self, tokens, idx, opts, env):
+            return f'<p>{display(self, tokens, idx, opts, env)} ({tokens[idx].info})</p>\n'
 
-            md.add_render_rule('math_inline', inline)
-            md.add_render_rule('math_inline_double', display)
-            md.add_render_rule('math_block', block)
-            md.add_render_rule('math_block_label', block_label)
-        _MD[math] = md
-    return _MD[math]
+        md.add_render_rule('math_inline', inline)
+        md.add_render_rule('math_inline_double', display)
+        md.add_render_rule('math_block', block)
+        md.add_render_rule('math_block_label', block_label)
+    return md
 
 
 def md2html(text, math=True):
@@ -409,7 +419,7 @@ def render_body(p):
     md, env = markdown(p.cat['math']), {}
     tokens = md.parse(text, env)
     h = md.renderer.render(tokens, md.options, env)
-    p.description = describe(tokens)
+    p.description = describe(md, tokens, env)
 
     # heading ids: the heading text itself, whitespace -> '-', deduped.
     used, heads = {}, []
@@ -426,13 +436,8 @@ def render_body(p):
     p.headings = heads
 
     # ```mermaid fences -> <pre class="mermaid"> (rendered client-side)
-    n = [0]
-
-    def mm(m):
-        n[0] += 1
-        return f'<pre class="mermaid">{m.group(1)}</pre>'
-    h = re.sub(r'<pre><code class="language-mermaid">(.*?)</code></pre>', mm, h, flags=re.S)
-    p.mermaid = n[0] > 0
+    h, n = re.subn(r'<pre><code class="language-mermaid">(.*?)</code></pre>', r'<pre class="mermaid">\1</pre>', h, flags=re.S)
+    p.mermaid = n > 0
 
     p.math = 'class="math"' in h
 
@@ -477,6 +482,7 @@ class Ctx:
             self.by_slug.setdefault((p.cat['dir'], p.slug), {})[p.lang] = p
         self.feed = any(c['atom'] for c in site['category']) and bool(site['url'])
         self.vendor_used = set()
+        self.cdn_warned = set()
         self._vendor = None
 
     def find_page(self, slug, lang):
@@ -493,7 +499,7 @@ class Ctx:
         g = self.find_page(slug, page.lang)
         if g is None:
             return None
-        if not hasattr(g, 'terms'):
+        if g.terms is None:
             g.terms = {text.lower(): ident for lvl, ident, text in g.headings if lvl <= 3}
         return g
 
@@ -514,8 +520,8 @@ class Ctx:
         url = self._vendor.get(name)
         if not url:
             die(f'no vendor entry for {name} in {VENDOR_LIST}')
-        if name not in getattr(self, '_cdn_warned', set()):
-            self._cdn_warned = getattr(self, '_cdn_warned', set()) | {name}
+        if name not in self.cdn_warned:
+            self.cdn_warned.add(name)
             print(f'folio: {name} loads from CDN (run `folio vendor` to self-host)', file=sys.stderr)
         return url
 
@@ -525,7 +531,7 @@ WL_RE = re.compile(r'<x-wikilink data-target="([^"]*)">(.*?)</x-wikilink>', re.S
 INTERNAL_RE = re.compile(r'^/?([^/#?]+\.html)?(?:#(.*))?$')
 
 
-def page_asset(ctx, href):
+def page_asset(ctx, href) -> tuple[bool, bool]:
     """Return (known page-asset URL, source exists) for a local href."""
     u = urllib.parse.urlsplit(html.unescape(href))
     if u.scheme or u.netloc or not u.path:
@@ -627,7 +633,7 @@ def git(root, *args):
 
 
 def stamps(p, root, site):
-    rel = os.path.relpath(p.src, root)
+    rel = p.src.relative_to(root)
     log = git(root, 'log', '--follow', '--diff-filter=AM', '--format=%cI', '--', rel).splitlines()
     first = log[-1] if log else ''           # the commit that added the file
     last = log[0] if len(log) > 1 else ''    # the latest edit, if any
@@ -664,7 +670,7 @@ MATHJAX_CFG = ("<script>window.MathJax={tex:{inlineMath:[['\\\\(','\\\\)']],disp
                "['script','noscript','style','textarea','pre','code']}};</script>")
 
 
-def langnav(p, ctx):
+def langnav(p, ctx) -> tuple[str, str]:
     cat, L = p.cat, ctx.site['langs']
     parts = []
     if cat['index'] != 'index.html':
@@ -773,10 +779,10 @@ def theme_file(root, name):
     return None
 
 
-def build(root, config=None, outdir=None):
+def build(root, outdir=None):
     WARNINGS.clear()
     root = root.resolve()
-    site = load_site(root, config)
+    site = load_site(root)
     out = safe_outdir(root, Path(outdir) if outdir else root / site['output'])
     pages = discover(root, site)
     ctx = Ctx(root, site, pages, out)
@@ -846,7 +852,7 @@ def signature(root):
     for base in (root / 'pages', root / 'theme', root / 'static', THEME):
         if base.is_dir():
             for f in base.rglob('*'):
-                if f.is_file() and '/output/' not in str(f):
+                if f.is_file():
                     sig = max(sig, f.stat().st_mtime_ns)
     st = root / 'site.toml'
     if st.exists():
@@ -854,7 +860,7 @@ def signature(root):
     return sig
 
 
-def cmd_watch(root, config, outdir):
+def cmd_watch(root, outdir):
     last = None
     print('folio: watching for changes (Ctrl-C to stop)')
     while True:
@@ -862,7 +868,7 @@ def cmd_watch(root, config, outdir):
         if sig != last:
             last = sig
             try:
-                build(root, config, outdir)
+                build(root, outdir)
             except SystemExit:
                 pass
             except Exception as e:
@@ -903,14 +909,12 @@ def cmd_vendor():
 def main(argv=None):
     ap = argparse.ArgumentParser(prog='folio', description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--root', default='.', help='site directory (default: cwd)')
-    ap.add_argument('--config', help='site.toml to use instead of ROOT/site.toml')
     ap.add_argument('-o', '--output', help='output directory (default: ROOT/output)')
     sub = ap.add_subparsers(dest='cmd')
     sub.add_parser('build')
     sub.add_parser('check')
     s = sub.add_parser('serve')
     s.add_argument('--port', type=int, default=8000)
-    s.add_argument('--no-build', action='store_true')
     sub.add_parser('watch')
     n = sub.add_parser('new')
     n.add_argument('category')
@@ -921,17 +925,16 @@ def main(argv=None):
     root = Path(a.root)
     cmd = a.cmd or 'build'
     if cmd == 'build':
-        build(root, a.config, a.output)
+        build(root, a.output)
     elif cmd == 'check':
-        build(root, a.config, a.output)
+        build(root, a.output)
         if WARNINGS:
             die(f'{len(WARNINGS)} warnings')
         print('folio: check ok')
     elif cmd == 'serve':
-        out = build(root, a.config, a.output) if not a.no_build else (Path(a.output) if a.output else root / load_site(root, a.config)['output'])
-        cmd_serve(out, a.port)
+        cmd_serve(build(root, a.output), a.port)
     elif cmd == 'watch':
-        cmd_watch(root, a.config, a.output)
+        cmd_watch(root, a.output)
     elif cmd == 'new':
         cmd_new(root, a.category, a.slug, a.title)
     elif cmd == 'vendor':

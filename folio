@@ -20,7 +20,7 @@ date = filename prefix, language = filename suffix). The first `# ` line is the
 title, the first paragraph the description, timestamps come from git.
 
 Rendering: markdown-it-py (GitHub dialect + LaTeX math + wiki links), then a
-few passes here for what it lacks: footnotes, heading ids, mermaid fences,
+few passes here for what it lacks: callouts, heading ids, mermaid fences,
 link previews, glossary popups. Features light up per page when a page uses
 them; nothing is switched on per page by hand.
 
@@ -48,6 +48,7 @@ from pathlib import Path
 
 from markdown_it import MarkdownIt
 from mdit_py_plugins.dollarmath import dollarmath_plugin
+from mdit_py_plugins.footnote import footnote_plugin
 from mdit_py_plugins.tasklists import tasklists_plugin
 
 HERE = Path(__file__).resolve().parent
@@ -228,79 +229,8 @@ def clip(s, n):
 # -------------------------------------------------------------- markdown --
 
 FENCE = re.compile(r'^\s{0,3}(`{3,}|~{3,})')
-FN_DEF = re.compile(r'^\[\^([^\]\s]+)\]:[ \t]*(.*)$')
-FN_REF = re.compile(r'\[\^([^\]\s]+)\](?!:)')
 CALLOUT_START = re.compile(r'^\s{0,3}>\s*\[!(NOTE|IMPORTANT|WARNING)\](?:\s+(.*?))?\s*$', re.I)
 CALLOUT_LINE = re.compile(r'^\s{0,3}> ?(.*)$')
-
-
-def footnotes(text: str) -> tuple[str, list[tuple[str, str]]]:
-    """GFM-style footnotes (not in markdown-it-py core). Returns (text, [(id, note_md)])."""
-    lines = text.split('\n')
-    kept, notes, fence, i = [], {}, None, 0
-    while i < len(lines):
-        ln = lines[i]
-        f = FENCE.match(ln)
-        if fence:
-            kept.append(ln)
-            if f and f.group(1)[0] == fence:
-                fence = None
-            i += 1
-            continue
-        if f:
-            fence = f.group(1)[0]
-            kept.append(ln)
-            i += 1
-            continue
-        d = FN_DEF.match(ln)
-        if d:
-            ident, parts = d.group(1), [d.group(2)]
-            i += 1
-            while i < len(lines):
-                nxt = lines[i]
-                if nxt.startswith(('    ', '\t')):
-                    parts.append(nxt[4:] if nxt.startswith('    ') else nxt[1:])
-                elif nxt.strip() == '' and i + 1 < len(lines) and lines[i + 1].startswith(('    ', '\t')):
-                    parts.append('')
-                else:
-                    break
-                i += 1
-            notes[ident] = '\n'.join(parts).strip()
-            continue
-        kept.append(ln)
-        i += 1
-
-    order, refs, out, fence, prev_blank, in_code = [], [], [], None, True, False
-
-    def ref(m):
-        ident = m.group(1)
-        if ident not in notes:
-            return m.group(0)
-        if ident not in order:
-            order.append(ident)
-        n = order.index(ident) + 1
-        k = refs.count(ident)
-        refs.append(ident)
-        rid = f'fnref-{ident}' + (f'-{k + 1}' if k else '')
-        return (f'<sup class="fn" id="{rid}"><a href="#fn-{ident}" '
-                f'data-pop="pop-fn-{ident}">{n}</a></sup>')
-
-    for ln in kept:
-        f = FENCE.match(ln)
-        if f:
-            fence = None if fence else f.group(1)[0]
-            out.append(ln)
-            continue
-        if ln.startswith(('    ', '\t')) and (prev_blank or in_code):
-            in_code = True
-        elif ln.strip():
-            in_code = False
-        if fence or in_code:
-            out.append(ln)
-        else:
-            out.append(FN_REF.sub(ref, ln))
-        prev_blank = ln.strip() == ''
-    return '\n'.join(out), [(ident, notes[ident]) for ident in order]
 
 
 def callouts(text):
@@ -369,12 +299,27 @@ def wikilinks(md):
 def markdown(math):
     md = (MarkdownIt('commonmark', {'html': True, 'linkify': True, 'xhtmlOut': False})
           .enable(['table', 'strikethrough', 'linkify'])
-          .use(tasklists_plugin).use(wikilinks))
+          .use(tasklists_plugin).use(footnote_plugin).use(wikilinks))
     # autolink only a real scheme. Never a bare e-mail, never a bare domain --
     # prose is full of "fly.io" and "DESIGN.md" that must stay text.
     md.linkify.set({'fuzzy_email': False, 'fuzzy_link': False})
     md.add_render_rule('s_open', lambda s, t, i, o, e: '<del>')
     md.add_render_rule('s_close', lambda s, t, i, o, e: '</del>')
+
+    # footnotes in our markup: numbered refs with hover popups, a plain
+    # <section class="footnotes"> at the end, no <hr>.
+    def fn_id(t):
+        return str(t.meta['id'] + 1) + (f"-{t.meta['subId'] + 1}" if t.meta.get('subId') else '')
+
+    md.add_render_rule('footnote_ref', lambda s, t, i, o, e: (
+        f'<sup class="fn" id="fnref-{fn_id(t[i])}"><a href="#fn-{t[i].meta["id"] + 1}" '
+        f'data-pop="pop-fn-{t[i].meta["id"] + 1}">{t[i].meta["id"] + 1}</a></sup>'))
+    md.add_render_rule('footnote_block_open', lambda s, t, i, o, e: '<section class="footnotes"><ol>')
+    md.add_render_rule('footnote_block_close', lambda s, t, i, o, e: '</ol></section>\n')
+    md.add_render_rule('footnote_open', lambda s, t, i, o, e: f'<li id="fn-{t[i].meta["id"] + 1}">')
+    md.add_render_rule('footnote_close', lambda s, t, i, o, e: '</li>')
+    md.add_render_rule('footnote_anchor', lambda s, t, i, o, e: (
+        f' <a href="#fnref-{fn_id(t[i])}" class="fnback" aria-label="back">↩</a>'))
     if math:
         # no space inside the delimiters, no digit hugging them -- keeps
         # "$5-$10" and "raised $Y @ $Z" in prose out of math
@@ -403,19 +348,8 @@ def markdown(math):
     return md
 
 
-def md2html(text, math=True):
-    return markdown(math).render(text)
-
-
-def inline_html(text, math=True):
-    h = md2html(text, math).strip()
-    m = re.fullmatch(r'<p>(.*)</p>', h, re.S)
-    return m.group(1) if m else h
-
-
 def render_body(p):
-    text, notes = footnotes(p.body)
-    text = callouts(text)
+    text = callouts(p.body)
     md, env = markdown(p.cat['math']), {}
     tokens = md.parse(text, env)
     h = md.renderer.render(tokens, md.options, env)
@@ -444,13 +378,9 @@ def render_body(p):
     # GFM tables get the same scroll/breakout wrapper hand-written ones use
     h = re.sub(r'<table>\n<thead>(.*?)</table>', r'<div class="t"><table>\n<thead>\1</table></div>', h, flags=re.S)
 
-    # footnotes section
-    p.notes = [(ident, inline_html(md, p.cat['math'])) for ident, md in notes]
-    p.math = p.math or any('class="math"' in body for _, body in p.notes)
-    if p.notes:
-        items = ''.join(f'<li id="fn-{i}">{body} <a href="#fnref-{i}" class="fnback" aria-label="back">↩</a></li>'
-                        for i, body in p.notes)
-        h += f'<section class="footnotes"><ol>{items}</ol></section>\n'
+    # footnote bodies feed the hover popups (minus the back link)
+    p.notes = [(n, re.sub(r' <a href="#fnref-[^"]*" class="fnback"[^<]*</a>', '', body))
+               for n, body in re.findall(r'<li id="fn-(\d+)">(.*?)</li>', h, re.S)]
     p.html = h
 
     # previews: '' -> (title, description); heading id -> (heading, first paragraph)

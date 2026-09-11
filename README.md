@@ -103,7 +103,7 @@ This first paragraph is the page description.
 See [another page](other-page.html#A-section). Link a glossary term as
 [[Term]] or [[Term|visible label]].
 
-[^source]: Footnotes support Markdown.
+[^source]: Footnotes support Markdown; `^[an inline note]` works too.
 ```
 
 Heading IDs replace spaces with `-`, preserve CJK characters, and are

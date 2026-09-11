@@ -8,7 +8,7 @@ Internal links get a hover preview at build time: see [the second note](second-n
 
 Prices in prose are safe with math on: $1.5B raised, $2 per seat, range $5-$10.
 
-[^why]: Footnotes are GFM syntax; the parser leaves them alone, so `folio` handles them itself. They can hold **markdown** and [links](second-note.html).
+[^why]: Footnotes can hold **markdown** and [links](second-note.html). An inline note is written `^[like this]`.
 
 ### Heading hierarchy
 

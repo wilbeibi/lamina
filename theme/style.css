@@ -247,6 +247,7 @@ sup.fn a:target { outline: 1px solid var(--link); }
 .footnotes ol { padding-left: 1.4rem; margin: 0; }
 .footnotes li { margin: .3rem 0; }
 .footnotes li:target { color: var(--fg); }
+.footnotes p { margin: .25rem 0; }
 .fnback { text-decoration: none; margin-left: .25em; }
 
 /* Table of contents (category `toc = true`). It is inline by default and

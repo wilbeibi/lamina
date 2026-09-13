@@ -98,11 +98,20 @@ def load_site(root):
             die('every [[category]] needs a dir')
         d = {'title': c['dir'], 'description': '', 'lang': site['lang'],
              'translations': [], 'index': 'index.html' if i == 0 else f"{c['dir']}.html",
-             'atom': False, 'math': True, 'toc': False, 'glossary': site['glossary']}
+             'atom': False, 'math': True, 'toc': False, 'glossary': site['glossary'],
+             'index_page': ''}
         d.update(c)
         for lang in [d['lang'], *d['translations']]:
             if lang not in langs:
                 die(f"category {d['dir']}: unknown language {lang!r} (add [langs.{lang}] to site.toml)")
+        if d['index_page']:
+            # the named page becomes the landing page; the category list moves
+            # to the category's own index name so navigation still reaches it.
+            if i != 0:
+                die(f"category {d['dir']}: index_page is only for the first category, the landing page")
+            if 'index' in c:
+                die(f"category {d['dir']}: set index_page or index, not both")
+            d['index'] = f"{d['dir']}.html"
         cats.append(d)
     if not cats:
         die('site.toml needs at least one [[category]]')
@@ -415,6 +424,8 @@ class Ctx:
         self.root, self.site, self.pages, self.outdir = root, site, pages, outdir
         self.by_out = {p.out: p for p in pages}
         self.indexes = {c['index'] for c in site['category']}
+        if site['category'][0]['index_page']:
+            self.indexes.add('index.html')      # written from the landing page
         self.by_slug = {}
         for p in pages:
             self.by_slug.setdefault((p.cat['dir'], p.slug), {})[p.lang] = p
@@ -668,10 +679,13 @@ def index_html(cat, ctx):
         sec.append(f'<strong>{t}</strong>' if c is cat else f'<a href="{href_of(c)}">{t}</a>')
     secnav = f'<span class="secnav">{SEP.join(sec)}</span>' if len(sec) > 1 else ''
     first = site['category'][0]
-    if cat is first:
+    at_root = cat is first and not cat['index_page']
+    if at_root:
         footer = '<a href="/atom.xml">atom</a>' if ctx.feed else ''
     else:
-        footer = f'<a href="/">← {html.escape(first["title"])}</a>'
+        label = site['name'] if cat is first else first['title']
+        back = '/' if cat is first else href_of(first)
+        footer = f'<a href="{back}">← {html.escape(label)}</a>'
     head = [f'<link rel="alternate" type="application/atom+xml" title="{html.escape(site["name"])}" href="/atom.xml">'] if ctx.feed else []
     title = html.escape(site['name']) if cat is first else f'{html.escape(cat["title"])} — {html.escape(site["name"])}'
     desc = cat['description'] or (site['description'] if cat is first else '')
@@ -679,7 +693,7 @@ def index_html(cat, ctx):
         'lang': cat['lang'], 'site_name': html.escape(site['name']), 'title': title,
         'description': html.escape(desc, quote=True), 'head': '\n'.join(head),
         'secnav': secnav, 'items': lis, 'footer': footer,
-        'brand': f'<strong>{html.escape(site["name"])}</strong>' if cat is first else f'<a href="/">{html.escape(site["name"])}</a>',
+        'brand': f'<strong>{html.escape(site["name"])}</strong>' if at_root else f'<a href="/">{html.escape(site["name"])}</a>',
     })
 
 
@@ -690,7 +704,8 @@ def atom_xml(ctx):
     url = site['url'].rstrip('/')
     item_t = tpl(ctx, 'atom-item.xml')
     items = ''.join(render(item_t, {
-        'title': html.escape(p.title), 'url': f'{url}/{p.out}', 'updated': p.atom_updated,
+        'title': html.escape(p.title), 'updated': p.atom_updated,
+        'url': f'{url}/' if p.out == 'index.html' else f'{url}/{p.out}',
         'summary': html.escape(p.description)}) for p in entries)
     updated = max((p.atom_updated for p in entries), default='1970-01-01T00:00:00Z')
     return render(tpl(ctx, 'atom.xml'), {
@@ -723,6 +738,15 @@ def build(root, outdir=None):
     site = load_site(root)
     out = safe_outdir(root, Path(outdir) if outdir else root / site['output'])
     pages = discover(root, site)
+    land = site['category'][0]
+    if land['index_page']:
+        pg = next((p for p in pages if p.cat is land and p.canonical and p.slug == land['index_page']), None)
+        if pg is None:
+            die(f"index_page {land['index_page']!r}: no such page in pages/{land['dir']}/")
+        for q in pages:
+            if q is not pg and q.out in ('index.html', land['index']):
+                die(f'{q.src.name} would be overwritten by the landing page or the {land["dir"]} index')
+        pg.out = 'index.html'
     ctx = Ctx(root, site, pages, out)
     if any(c['atom'] for c in site['category']) and not site['url']:
         warn('atom feed needs `url` in site.toml; feed skipped')

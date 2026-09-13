@@ -83,6 +83,8 @@
   function show(a) {
     var t = doc.getElementById(a.getAttribute('data-pop'));
     if (!t || !t.content) return;
+    var sn = a.parentNode.nextElementSibling;   // footnote already visible in the margin
+    if (sn && sn.className === 'sn' && sn.offsetParent) return;
     var p = box();
     p.innerHTML = '';
     p.appendChild(t.content.cloneNode(true));

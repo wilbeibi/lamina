@@ -381,6 +381,14 @@ def render_body(p):
     # footnote bodies feed the hover popups (minus the back link)
     p.notes = [(n, re.sub(r' <a href="#fnref-[^"]*" class="fnback"[^<]*</a>', '', body))
                for n, body in re.findall(r'<li id="fn-(\d+)">(.*?)</li>', h, re.S)]
+    # ...and a sidenote after the first ref, shown in the margin when wide
+    # (style.css). Notes with block content stay popup + endnote only.
+    for n, body in p.notes:
+        if re.search(r'<(pre|ul|ol|div|blockquote|table)\b', body):
+            continue
+        inner = re.sub(r'</p>\s*<p>', '<br>', body.strip()).removeprefix('<p>').removesuffix('</p>')
+        at = h.find('</sup>', h.find(f'<sup class="fn" id="fnref-{n}">')) + 6
+        h = f'{h[:at]}<span class="sn"><b>{n}</b> {inner}</span>{h[at:]}'
     p.html = h
 
     # previews: '' -> (title, description); heading id -> (heading, first paragraph)

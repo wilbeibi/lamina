@@ -249,6 +249,18 @@ sup.fn a:target { outline: 1px solid var(--link); }
 .footnotes li:target { color: var(--fg); }
 .footnotes p { margin: .25rem 0; }
 .fnback { text-decoration: none; margin-left: .25em; }
+/* Sidenotes: with room beside the column, each note floats into the right
+   margin level with its ref and the endnote list goes away. */
+.sn { display: none; }
+@media (min-width: 84rem) {
+	.sn {
+		display: block; float: right; clear: right;
+		width: 14rem; margin: .15rem -16.5rem .75rem 0;
+		color: var(--muted); font-size: .8rem; line-height: 1.45;
+	}
+	.sn b { color: var(--fg); font-weight: 600; margin-right: .15em; }
+	.footnotes { display: none; }
+}
 
 /* Table of contents (category `toc = true`). It is inline by default and
    becomes a left-side minimap only when there is room beside the 46rem page. */

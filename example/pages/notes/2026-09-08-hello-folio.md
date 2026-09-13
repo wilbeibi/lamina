@@ -4,7 +4,7 @@ This page exercises every feature the framework has. The first paragraph is the 
 
 ## Prose, links, footnotes
 
-Internal links get a hover preview at build time: see [the second note](second-note.html) or a section of it, [its method](second-note.html#Method). Hover either. A footnote[^why] shows on hover too and still lists at the bottom. Terms in double brackets resolve against the glossary page: [[Static site]], [[Progressive enhancement|enhanced progressively]]. An unknown term like `[[nope]]` would be flagged at build time and rendered muted.
+Internal links get a hover preview at build time: see [the second note](second-note.html) or a section of it, [its method](second-note.html#Method). Hover either. A footnote[^why] sits in the margin on a wide screen; narrower, it shows on hover and lists at the bottom. Terms in double brackets resolve against the glossary page: [[Static site]], [[Progressive enhancement|enhanced progressively]]. An unknown term like `[[nope]]` would be flagged at build time and rendered muted.
 
 Prices in prose are safe with math on: $1.5B raised, $2 per seat, range $5-$10.
 

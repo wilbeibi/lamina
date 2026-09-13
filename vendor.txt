@@ -1,4 +1,4 @@
-# name  url   -- `folio vendor` downloads these into theme/vendor/ (gitignored).
+# name  url   -- `lamina vendor` downloads these into theme/vendor/ (gitignored).
 # Until then pages that need them load from the CDN. Pin versions on purpose.
 mermaid.min.js https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.min.js
 tex-svg.js     https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js

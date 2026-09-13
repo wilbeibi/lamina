@@ -1,7 +1,7 @@
-# folio site config. Categories are directories under pages/; the first one is
+# lamina site config. Categories are directories under pages/; the first one is
 # the landing page. Everything else has a default.
-name = "folio"
-description = "an example site showing every folio feature"
+name = "lamina"
+description = "an example site showing every lamina feature"
 url = "https://example.invalid"
 author = "you"
 lang = "en"          # default language for categories that don't say

@@ -9,7 +9,7 @@
     ctx.clearRect(0, 0, w, h);
     ctx.lineWidth = 2;
     ['--s1', '--s2', '--s3'].forEach(function (v, k) {
-      ctx.strokeStyle = folio.css(v, c.parentNode) || ['#2a78d6', '#1baf7a', '#d98c00'][k];
+      ctx.strokeStyle = lamina.css(v, c.parentNode) || ['#2a78d6', '#1baf7a', '#d98c00'][k];
       ctx.beginPath();
       for (var x = 0; x <= w; x += 2) {
         var y = h / 2 + Math.sin(x / (40 + 20 * k) + t * (1 + k / 2)) * (h / 3 - 12 * k);
@@ -18,9 +18,9 @@
       ctx.stroke();
     });
     t += 0.03;
-    if (!folio.reducedMotion) raf = requestAnimationFrame(frame);
+    if (!lamina.reducedMotion) raf = requestAnimationFrame(frame);
   }
-  folio.onVisible(c, function () { if (!raf) frame(); }, {
+  lamina.onVisible(c, function () { if (!raf) frame(); }, {
     repeat: true, leave: function () { cancelAnimationFrame(raf); raf = null; }
   });
 })();

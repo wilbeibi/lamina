@@ -7,7 +7,7 @@
 #     "linkify-it-py~=2.2",
 # ]
 # ///
-"""folio — build a plain, long-form static site from a directory of Markdown.
+"""lamina — build a plain, long-form static site from a directory of Markdown.
 
     pages/<category>/YYYY-MM-DD-slug[.lang].md   -> output/slug[.lang].html
     pages/<category>/YYYY-MM-DD-slug/            -> output/slug/        (page assets)
@@ -24,12 +24,12 @@ few passes here for what it lacks: callouts, heading ids, mermaid fences,
 link previews, glossary popups. Features light up per page when a page uses
 them; nothing is switched on per page by hand.
 
-    folio build [--root DIR] [-o DIR]                   build the site
-    folio check                                          build, fail on warnings
-    folio serve [--port N]                               serve output/ locally
-    folio watch                                          rebuild on change
-    folio new CATEGORY SLUG [--title T]                  create a page
-    folio vendor                                         self-host mermaid + MathJax
+    lamina build [--root DIR] [-o DIR]                   build the site
+    lamina check                                          build, fail on warnings
+    lamina serve [--port N]                               serve output/ locally
+    lamina watch                                          rebuild on change
+    lamina new CATEGORY SLUG [--title T]                  create a page
+    lamina vendor                                         self-host mermaid + MathJax
 """
 import argparse
 import functools
@@ -60,11 +60,11 @@ WARNINGS = []
 
 def warn(msg):
     WARNINGS.append(msg)
-    print(f'folio: {msg}', file=sys.stderr)
+    print(f'lamina: {msg}', file=sys.stderr)
 
 
 def die(msg, code=1):
-    print(f'folio: {msg}', file=sys.stderr)
+    print(f'lamina: {msg}', file=sys.stderr)
     sys.exit(code)
 
 
@@ -460,7 +460,7 @@ class Ctx:
             die(f'no vendor entry for {name} in {VENDOR_LIST}')
         if name not in self.cdn_warned:
             self.cdn_warned.add(name)
-            print(f'folio: {name} loads from CDN (run `folio vendor` to self-host)', file=sys.stderr)
+            print(f'lamina: {name} loads from CDN (run `lamina vendor` to self-host)', file=sys.stderr)
         return url
 
 
@@ -644,7 +644,7 @@ def page_html(p, ctx):
         head.append(f'<script defer src="{ctx.vendor_url("tex-svg.js")}"></script>')
     if p.mermaid:
         head.append(f'<script defer src="{ctx.vendor_url("mermaid.min.js")}"></script>')
-    head.append('<script defer src="/folio.js"></script>')
+    head.append('<script defer src="/lamina.js"></script>')
     footer = f'<a href="{href_of(p.cat)}">← {html.escape(p.cat["title"])}</a>'
     if ctx.feed:
         footer += ' · <a href="/atom.xml">atom</a>'
@@ -750,7 +750,7 @@ def build(root, outdir=None):
     if extra.exists():
         css += '\n/* site.css */\n' + extra.read_text(encoding='utf-8')
     (out / 'style.css').write_text(css, encoding='utf-8')
-    for name in ('folio.js', 'favicon.svg'):
+    for name in ('lamina.js', 'favicon.svg'):
         f = theme_file(root, name)
         if f:
             shutil.copy(f, out / name)
@@ -765,7 +765,7 @@ def build(root, outdir=None):
                 warn(f'static/{f.relative_to(static)} shadows a generated page')
         shutil.copytree(static, out, dirs_exist_ok=True)
     n = len(pages)
-    print(f'folio: built {n} pages + {len(site["category"])} indexes -> {out}'
+    print(f'lamina: built {n} pages + {len(site["category"])} indexes -> {out}'
           + (f' ({len(WARNINGS)} warnings)' if WARNINGS else ''))
     return out
 
@@ -778,7 +778,7 @@ def cmd_serve(out, port):
     handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(out))
     handler.log_message = lambda *a, **k: None
     with http.server.ThreadingHTTPServer(('127.0.0.1', port), handler) as srv:
-        print(f'folio: serving {out} at http://127.0.0.1:{port}/  (Ctrl-C to stop)')
+        print(f'lamina: serving {out} at http://127.0.0.1:{port}/  (Ctrl-C to stop)')
         try:
             srv.serve_forever()
         except KeyboardInterrupt:
@@ -800,7 +800,7 @@ def signature(root):
 
 def cmd_watch(root, outdir):
     last = None
-    print('folio: watching for changes (Ctrl-C to stop)')
+    print('lamina: watching for changes (Ctrl-C to stop)')
     while True:
         sig = signature(root)
         if sig != last:
@@ -810,7 +810,7 @@ def cmd_watch(root, outdir):
             except SystemExit:
                 pass
             except Exception as e:
-                print(f'folio: build failed: {e!r}', file=sys.stderr)
+                print(f'lamina: build failed: {e!r}', file=sys.stderr)
         try:
             time.sleep(1)
         except KeyboardInterrupt:
@@ -839,13 +839,13 @@ def cmd_vendor():
         if not ln.strip() or ln.startswith('#'):
             continue
         name, url = ln.split(None, 1)
-        print(f'folio: {url} -> {dest / name}')
+        print(f'lamina: {url} -> {dest / name}')
         with urllib.request.urlopen(url.strip(), timeout=60) as r, open(dest / name, 'wb') as w:
             shutil.copyfileobj(r, w)
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(prog='folio', description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(prog='lamina', description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--root', default='.', help='site directory (default: cwd)')
     ap.add_argument('-o', '--output', help='output directory (default: ROOT/output)')
     sub = ap.add_subparsers(dest='cmd')
@@ -868,7 +868,7 @@ def main(argv=None):
         build(root, a.output)
         if WARNINGS:
             die(f'{len(WARNINGS)} warnings')
-        print('folio: check ok')
+        print('lamina: check ok')
     elif cmd == 'serve':
         cmd_serve(build(root, a.output), a.port)
     elif cmd == 'watch':

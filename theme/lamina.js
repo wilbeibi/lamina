@@ -1,11 +1,11 @@
-// folio.js — the one small script every page loads (~4 KB). Progressive
+// lamina.js — the one small script every page loads (~4 KB). Progressive
 // enhancement only: without it, every page is complete and readable.
 //   1. sortable tables: click a header cell (numeric-aware: , $ % K/M/B)
 //   2. hover popups: [data-pop] elements show the <template> named by the attr
 //      (link previews, [[glossary]] terms, footnotes) -- built at build time
 //   3. active-section marker for a long page's contents minimap
 //   4. mermaid bootstrap, theme-aware, re-renders when the OS theme flips
-//   5. window.folio helpers for embedded animations
+//   5. window.lamina helpers for embedded animations
 (function () {
   'use strict';
   var doc = document, dark = matchMedia('(prefers-color-scheme: dark)');
@@ -13,7 +13,7 @@
   var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---- helpers for page scripts ------------------------------------------
-  window.folio = {
+  window.lamina = {
     dark: function () { return dark.matches; },
     reducedMotion: reduced,
     // run fn(el) when el scrolls into view (once by default): start animations lazily
@@ -30,7 +30,7 @@
       io.observe(el);
     },
     onThemeChange: function (fn) { dark.addEventListener('change', function () { fn(dark.matches); }); },
-    // read a CSS custom property off the page (e.g. folio.css('--fg'))
+    // read a CSS custom property off the page (e.g. lamina.css('--fg'))
     css: function (name, el) { return getComputedStyle(el || doc.documentElement).getPropertyValue(name).trim(); }
   };
 

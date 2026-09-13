@@ -1,4 +1,4 @@
-# Hello, folio
+# Hello, lamina
 
 This page exercises every feature the framework has. The first paragraph is the description; the `# ` line above is the title; the date is the filename prefix. Nothing else is declared anywhere.
 
@@ -39,8 +39,8 @@ def hello(name: str) -> str:
 
 ```mermaid
 flowchart LR
-  md[pages/*.md] --> markdown-it-py --> folio --> out[output/*.html]
-  folio -. previews, footnotes, ids .-> out
+  md[pages/*.md] --> markdown-it-py --> lamina --> out[output/*.html]
+  lamina -. previews, footnotes, ids .-> out
 ```
 
 Rendered client-side by mermaid, theme follows the OS setting, source text is the no-JS fallback.
@@ -60,11 +60,11 @@ MathJax loads only on pages that contain math.
 
 ## Embedded animation
 
-A raw HTML block with its own script. Page assets live in a directory named like the page (`2026-09-08-hello-folio/`) and are served under `/hello-folio/`. The script uses `folio.onVisible` to start only when scrolled into view, `folio.reducedMotion` to respect the OS setting, and `folio.dark()` for colours.
+A raw HTML block with its own script. Page assets live in a directory named like the page (`2026-09-08-hello-lamina/`) and are served under `/hello-lamina/`. The script uses `lamina.onVisible` to start only when scrolled into view, `lamina.reducedMotion` to respect the OS setting, and `lamina.dark()` for colours.
 
 <div class="viz">
 <canvas id="wave" width="640" height="160" aria-label="animated sine waves"></canvas>
-<script defer src="/hello-folio/anim.js"></script>
+<script defer src="/hello-lamina/anim.js"></script>
 </div>
 
 Inline `<script>` works the same way; a file is just easier to edit.
@@ -82,8 +82,8 @@ Inline `<script>` works the same way; a file is just easier to edit.
 
 ## Materials
 
-- [Animation source](hello-folio/anim.js)
-- [Example raw results](hello-folio/results.json)
+- [Animation source](hello-lamina/anim.js)
+- [Example raw results](hello-lamina/results.json)
 
 <details>
 <summary>Folded section (markdown inside works now)</summary>

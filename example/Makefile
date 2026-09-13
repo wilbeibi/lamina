@@ -1,10 +1,10 @@
-FOLIO ?= $(HOME)/src/folio
+LAMINA ?= $(HOME)/src/lamina
 
 all:
-	@$(FOLIO)/folio build
+	@$(LAMINA)/lamina build
 
 check serve watch:
-	@$(FOLIO)/folio $@
+	@$(LAMINA)/lamina $@
 
 clean:
 	rm -rf output

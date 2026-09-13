@@ -218,10 +218,10 @@ td ins[datetime]::before {
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; overflow-x: clip; }
 a { overflow-wrap: anywhere; }
 
-/* ── folio additions ─────────────────────────────────────────────────
+/* ── lamina additions ─────────────────────────────────────────────────
    Everything below lights up only when a page uses the feature. */
 
-/* Hover popups: link previews, glossary terms, footnotes (folio.js). */
+/* Hover popups: link previews, glossary terms, footnotes (lamina.js). */
 .pop {
 	position: absolute; z-index: 10; display: none;
 	max-width: min(26rem, calc(100vw - 2rem));
@@ -321,7 +321,7 @@ mjx-container[display="true"] { margin: .5rem 0 !important; }
 
 /* Embedded animations / custom blocks: <div class="viz"> is a plain container;
    canvas + svg scale to the column. --s1..--s8 is a light/dark-aware palette
-   page scripts may read (folio.css('--s1', el)). */
+   page scripts may read (lamina.css('--s1', el)). */
 .viz { margin: 1.25rem 0; --s1:#2a78d6; --s2:#1baf7a; --s3:#d98c00; --s4:#008300; --s5:#6d5bd0; --s6:#e34948; --s7:#d1568f; --s8:#eb6834; }
 @media (prefers-color-scheme: dark) {
 	.viz { --s1:#4a95ef; --s2:#22b884; --s3:#e0a338; --s4:#28a745; --s5:#9b8cf0; --s6:#f06a6a; --s7:#e07bab; --s8:#f0794a; }

@@ -1,7 +1,7 @@
-# folio
+# Lamina
 
 Publish long-form Markdown as a plain static site without front matter or a
-CMS. Folio derives page metadata from source paths and content. It writes
+CMS. Lamina derives page metadata from source paths and content. It writes
 ordinary files you can serve anywhere.
 
 It is for personal notes, research reports, and small documentation sites that
@@ -10,7 +10,7 @@ platform, CMS, search service, or plugin host.
 
 ## Start a site
 
-Folio needs [uv](https://docs.astral.sh/uv/). The `folio` script requests
+Lamina needs [uv](https://docs.astral.sh/uv/). The `lamina` script requests
 Python 3.11 or later and declares its dependencies inline, so uv creates and
 reuses a cached environment on first run. Git is optional but supplies created
 and updated timestamps when available.
@@ -20,9 +20,9 @@ From a checkout of this repository, create a site in another directory:
 ```sh
 mkdir -p ~/src/worknotes/pages/notes ~/src/worknotes/pages/reports
 cd ~/src/worknotes
-cp /path/to/folio/example/site.toml .
-/path/to/folio/folio new notes first-note --title "First note"
-/path/to/folio/folio build
+cp /path/to/lamina/example/site.toml .
+/path/to/lamina/lamina new notes first-note --title "First note"
+/path/to/lamina/lamina build
 ```
 
 Edit `site.toml` before publishing, especially its `name`, `description`,
@@ -31,13 +31,13 @@ Edit `site.toml` before publishing, especially its `name`, `description`,
 For a local preview, rebuild and serve on the loopback interface:
 
 ```sh
-/path/to/folio/folio serve
+/path/to/lamina/lamina serve
 # http://127.0.0.1:8000/
 ```
 
-Use `folio watch` to rebuild after source changes. Use `folio check` in CI or
+Use `lamina watch` to rebuild after source changes. Use `lamina check` in CI or
 before publishing; it fails on build warnings, including bad links, missing
-anchors, and unresolved wiki links. Run `folio --help` for the full interface.
+anchors, and unresolved wiki links. Run `lamina --help` for the full interface.
 
 `example/` is a working site that exercises every supported feature:
 
@@ -89,7 +89,7 @@ English translations and the remaining options.
 
 ## Write pages
 
-Folio uses GitHub-flavored Markdown. It supports tables, fenced and indented
+Lamina uses GitHub-flavored Markdown. It supports tables, fenced and indented
 code, strikethrough, footnotes, collapsible sections, and raw HTML. Links are
 checked during a build.
 
@@ -135,9 +135,9 @@ page. Do not place credentials or private source data in an asset directory.
 
 ## Theme and deployment
 
-Folio supplies a system-font layout with OS-controlled light and dark themes.
+Lamina supplies a system-font layout with OS-controlled light and dark themes.
 To override a framework file, add a same-named file under the site's `theme/`:
-`style.css`, `folio.js`, `favicon.svg`, `page.html`, `index.html`,
+`style.css`, `lamina.js`, `favicon.svg`, `page.html`, `index.html`,
 `index-item.html`, `atom.xml`, or `atom-item.xml`. Add `theme/site.css` to
 append site-specific CSS without replacing the base stylesheet.
 
@@ -145,17 +145,17 @@ append site-specific CSS without replacing the base stylesheet.
 static-file host.
 
 Mermaid and MathJax normally load from their pinned jsDelivr versions. To
-self-host them, run this from the Folio checkout before building:
+self-host them, run this from the Lamina checkout before building:
 
 ```sh
-/path/to/folio/folio vendor
+/path/to/lamina/lamina vendor
 ```
 
-Folio copies only the vendor files used by the site into `output/vendor/`.
+Lamina copies only the vendor files used by the site into `output/vendor/`.
 
 ## Limits
 
-Folio deliberately does not provide search, tags, comments, pagination,
+Lamina deliberately does not provide search, tags, comments, pagination,
 syntax highlighting, or a plugin system. It also does not manage hosting or
 deployments. Add a feature only when the Markdown and generated files remain
 easy to inspect and move.

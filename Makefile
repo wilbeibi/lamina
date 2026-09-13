@@ -2,16 +2,16 @@
 all: example
 
 example:
-	@./folio --root example build
+	@./lamina --root example build
 
 check:
-	@./folio --root example check
+	@./lamina --root example check
 
 serve:
-	@./folio --root example serve
+	@./lamina --root example serve
 
 vendor:
-	@./folio vendor
+	@./lamina vendor
 
 clean:
 	rm -rf example/output

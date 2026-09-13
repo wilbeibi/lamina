@@ -2,16 +2,16 @@
 all: example
 
 example:
-	@./lamina --root example build
+	@uv run lamina --root example build
 
 check:
-	@./lamina --root example check
+	@uv run lamina --root example check
 
 serve:
-	@./lamina --root example serve
+	@uv run lamina --root example serve
 
 vendor:
-	@./lamina vendor
+	@uv run lamina vendor
 
 clean:
 	rm -rf example/output

@@ -1,10 +1,8 @@
-LAMINA ?= $(HOME)/src/lamina
-
 all:
-	@$(LAMINA)/lamina build
+	@uv run lamina build
 
 check serve watch:
-	@$(LAMINA)/lamina $@
+	@uv run lamina $@
 
 clean:
 	rm -rf output

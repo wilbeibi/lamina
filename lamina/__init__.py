@@ -1,12 +1,3 @@
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.11"
-# dependencies = [
-#     "markdown-it-py~=4.2",
-#     "mdit-py-plugins~=0.6",
-#     "linkify-it-py~=2.2",
-# ]
-# ///
 """lamina — build a plain, long-form static site from a directory of Markdown.
 
     pages/<category>/YYYY-MM-DD-slug[.lang].md   -> output/slug[.lang].html

@@ -10,16 +10,21 @@ platform, CMS, search service, or plugin host.
 
 ## Start a site
 
-Lamina needs [uv](https://docs.astral.sh/uv/). The `lamina` script requests
-Python 3.11 or later and declares its dependencies inline, so uv creates and
-reuses a cached environment on first run. Git is optional but supplies created
-and updated timestamps when available.
-
-From a checkout of this repository, scaffold a site in another directory:
+Lamina needs [uv](https://docs.astral.sh/uv/) and Python 3.11 or later.
+Install the `lamina` command onto your PATH:
 
 ```sh
-/path/to/lamina/lamina init ~/src/worknotes
-cd ~/src/worknotes && /path/to/lamina/lamina build
+uv tool install /path/to/lamina
+```
+
+To run it without installing, `uvx --from /path/to/lamina lamina` works too.
+Git is optional but supplies created and updated timestamps when available.
+
+Then scaffold a site in another directory:
+
+```sh
+lamina init ~/src/worknotes
+cd ~/src/worknotes && lamina build
 ```
 
 `init` writes `site.toml`, `pages/notes/`, and a first page; add categories by
@@ -31,7 +36,7 @@ write a page in one. Edit `site.toml` before publishing, especially its `name`,
 For a local preview, rebuild and serve on the loopback interface:
 
 ```sh
-/path/to/lamina/lamina serve
+lamina serve
 # http://127.0.0.1:8000/
 ```
 
@@ -158,13 +163,15 @@ append site-specific CSS without replacing the base stylesheet.
 static-file host.
 
 Mermaid and MathJax normally load from their pinned jsDelivr versions. To
-self-host them, run this from the Lamina checkout before building:
+self-host them, run this before building:
 
 ```sh
-/path/to/lamina/lamina vendor
+lamina vendor
 ```
 
-Lamina copies only the vendor files used by the site into `output/vendor/`.
+The files are written next to the installed package, so re-run this after
+reinstalling lamina. Lamina copies only the vendor files used by the site into
+`output/vendor/`.
 
 ## Limits
 

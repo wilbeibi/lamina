@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+# `lamina` is taken on PyPI (an unrelated Pygame/OpenGL project), so the
+# distribution carries a suffix while the installed command stays `lamina`.
+name = "lamina-ssg"
+version = "0.1.0"
+description = "Publish long-form Markdown as a plain static site"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "markdown-it-py~=4.2",
+    "mdit-py-plugins~=0.6",
+    "linkify-it-py~=2.2",
+]
+
+[project.scripts]
+lamina = "lamina:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["lamina"]

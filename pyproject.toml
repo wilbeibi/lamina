@@ -3,9 +3,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-# `lamina` is taken on PyPI (an unrelated Pygame/OpenGL project), so the
-# distribution carries a suffix while the installed command stays `lamina`.
-name = "lamina-ssg"
+# Installed from git or a checkout, so the name only has to be unique on this
+# machine. Publishing to PyPI will need a different one: `lamina` there is an
+# unrelated Pygame/OpenGL project.
+name = "lamina"
 version = "0.1.0"
 description = "Publish long-form Markdown as a plain static site"
 readme = "README.md"

@@ -14,11 +14,13 @@ Lamina needs [uv](https://docs.astral.sh/uv/) and Python 3.11 or later.
 Install the `lamina` command onto your PATH:
 
 ```sh
-uv tool install /path/to/lamina
+uv tool install git+https://github.com/wilbeibi/lamina
 ```
 
-To run it without installing, `uvx --from /path/to/lamina lamina` works too.
-Git is optional but supplies created and updated timestamps when available.
+The repository is still private, so use
+`git+ssh://git@github.com/wilbeibi/lamina` until it is public. `uvx --from`
+either URL runs it without installing. Git is optional but supplies created and
+updated timestamps when available.
 
 Then scaffold a site in another directory:
 

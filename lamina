@@ -24,6 +24,7 @@ few passes here for what it lacks: callouts, heading ids, mermaid fences,
 link previews, glossary popups. Features light up per page when a page uses
 them; nothing is switched on per page by hand.
 
+    lamina init [DIR]                                    scaffold a new site
     lamina build [--root DIR] [-o DIR]                   build the site
     lamina check                                          build, fail on warnings
     lamina serve [--port N]                               serve output/ locally
@@ -841,6 +842,47 @@ def cmd_watch(root, outdir):
             return
 
 
+SITE_TOML = '''\
+# lamina site config. Only [[category]] is required; the README lists the rest.
+# `url` is used for the Atom feed and absolute links.
+
+name = "{name}"
+description = ""
+url = ""
+author = ""
+lang = "en"
+
+[[category]]
+dir = "notes"
+title = "notes"
+description = ""
+'''
+
+FIRST_PAGE = '''\
+# First note
+
+The `# ` line above is the title and is left out of the body; this paragraph
+becomes the description used by indexes, metadata, and link previews. The date
+comes from the filename and the directory is the category, so nothing is
+declared twice.
+'''
+
+
+def cmd_init(root):
+    root = root.resolve()
+    if (root / 'site.toml').exists():
+        die(f'{root}/site.toml exists; refusing to overwrite an existing site')
+    page = root / 'pages' / 'notes' / f'{_date.today().isoformat()}-first-note.md'
+    if page.exists():
+        die(f'{page} exists; refusing to overwrite')
+    page.parent.mkdir(parents=True, exist_ok=True)
+    (root / 'site.toml').write_text(SITE_TOML.format(name=root.name or 'site'), encoding='utf-8')
+    page.write_text(FIRST_PAGE, encoding='utf-8')
+    print(f'lamina: wrote {root / "site.toml"}')
+    print(f'lamina: wrote {page}')
+    print('lamina: edit site.toml, then build here')
+
+
 def cmd_new(root, category, slug, title):
     site = load_site(root)
     cats = {c['dir']: c for c in site['category']}
@@ -882,6 +924,8 @@ def main(argv=None):
     n.add_argument('category')
     n.add_argument('slug')
     n.add_argument('--title')
+    i = sub.add_parser('init')
+    i.add_argument('directory', nargs='?', help='site directory (default: --root)')
     sub.add_parser('vendor')
     a = ap.parse_args(argv)
     root = Path(a.root)
@@ -899,6 +943,8 @@ def main(argv=None):
         cmd_watch(root, a.output)
     elif cmd == 'new':
         cmd_new(root, a.category, a.slug, a.title)
+    elif cmd == 'init':
+        cmd_init(Path(a.directory) if a.directory else root)
     elif cmd == 'vendor':
         cmd_vendor()
 

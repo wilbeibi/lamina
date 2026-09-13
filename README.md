@@ -15,18 +15,18 @@ Python 3.11 or later and declares its dependencies inline, so uv creates and
 reuses a cached environment on first run. Git is optional but supplies created
 and updated timestamps when available.
 
-From a checkout of this repository, create a site in another directory:
+From a checkout of this repository, scaffold a site in another directory:
 
 ```sh
-mkdir -p ~/src/worknotes/pages/notes ~/src/worknotes/pages/reports
-cd ~/src/worknotes
-cp /path/to/lamina/example/site.toml .
-/path/to/lamina/lamina new notes first-note --title "First note"
-/path/to/lamina/lamina build
+/path/to/lamina/lamina init ~/src/worknotes
+cd ~/src/worknotes && /path/to/lamina/lamina build
 ```
 
-Edit `site.toml` before publishing, especially its `name`, `description`,
-`url`, and category definitions. The build writes the site to `output/`.
+`init` writes `site.toml`, `pages/notes/`, and a first page; add categories by
+editing `site.toml` and creating their directories, or run `lamina new` to
+write a page in one. Edit `site.toml` before publishing, especially its `name`,
+`description`, `url`, and category definitions. The build writes the site to
+`output/`.
 
 For a local preview, rebuild and serve on the loopback interface:
 

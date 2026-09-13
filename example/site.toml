@@ -2,7 +2,7 @@
 # the landing page. Everything else has a default.
 name = "lamina"
 description = "an example site showing every lamina feature"
-url = "https://example.invalid"
+url = "https://lamina-demo.pages.dev" # the live build of this example site
 author = "you"
 lang = "en"          # default language for categories that don't say
 glossary = "glossary" # slug of the page whose h2/h3 headings define [[terms]]

@@ -154,6 +154,9 @@ To override a framework file, add a same-named file under the site's `theme/`:
 `index-item.html`, `atom.xml`, or `atom-item.xml`. Add `theme/site.css` to
 append site-specific CSS without replacing the base stylesheet.
 
+`footer` in `site.toml` is an HTML fragment appended to every footer; use it
+for a source link, a license, or a copyright line.
+
 `output/` contains only static files. Serve it with Caddy, nginx, or any
 static-file host.
 

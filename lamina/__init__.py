@@ -69,7 +69,7 @@ LANG_DEFAULTS = {
 
 SITE_DEFAULTS = {
     'name': 'site', 'description': '', 'url': '', 'author': '', 'lang': 'en',
-    'output': 'output', 'glossary': '', 'toc_min': 3,
+    'output': 'output', 'glossary': '', 'toc_min': 3, 'footer': '',
 }
 
 
@@ -640,13 +640,15 @@ def page_html(p, ctx):
     if p.mermaid:
         head.append(f'<script defer src="{ctx.vendor_url("mermaid.min.js")}"></script>')
     head.append('<script defer src="/lamina.js"></script>')
-    footer = f'<a href="{href_of(p.cat)}">← {html.escape(p.cat["title"])}</a>'
+    footer = [f'<a href="{href_of(p.cat)}">← {html.escape(p.cat["title"])}</a>']
     if ctx.feed:
-        footer += ' · <a href="/atom.xml">atom</a>'
+        footer.append('<a href="/atom.xml">atom</a>')
+    if site['footer']:
+        footer.append(site['footer'])
     return render(tpl(ctx, 'page.html'), {
         'lang': p.lang, 'site_name': html.escape(site['name']), 'title': html.escape(p.title),
         'description': html.escape(p.description, quote=True), 'head': '\n'.join(x for x in head if x),
-        'nav': nav, 'meta': p.meta, 'toc': p.toc, 'content': p.html, 'pops': p.pops, 'footer': footer,
+        'nav': nav, 'meta': p.meta, 'toc': p.toc, 'content': p.html, 'pops': p.pops, 'footer': ' · '.join(footer),
     })
 
 
@@ -670,6 +672,7 @@ def index_html(cat, ctx):
         label = site['name'] if cat is first else first['title']
         back = '/' if cat is first else href_of(first)
         footer = f'<a href="{back}">← {html.escape(label)}</a>'
+    footer = ' · '.join(x for x in (footer, site['footer']) if x)
     head = [f'<link rel="alternate" type="application/atom+xml" title="{html.escape(site["name"])}" href="/atom.xml">'] if ctx.feed else []
     title = html.escape(site['name']) if cat is first else f'{html.escape(cat["title"])} — {html.escape(site["name"])}'
     desc = cat['description'] or (site['description'] if cat is first else '')

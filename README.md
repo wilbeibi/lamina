@@ -1,4 +1,4 @@
-<h1 align="center">Lamina — a just-enough static-site generator for Markdown folders</h1>
+<h1 align="center">Lamina: a just-enough static-site generator for markdown files</h1>
 
 <div align="center">
 

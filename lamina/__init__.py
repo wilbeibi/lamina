@@ -1,27 +1,18 @@
-"""lamina — build a plain, long-form static site from a directory of Markdown.
+"""lamina — publish a directory of Markdown as a plain static site.
 
-    pages/<category>/YYYY-MM-DD-slug[.lang].md   -> output/slug[.lang].html
-    pages/<category>/YYYY-MM-DD-slug/            -> output/slug/        (page assets)
-    static/                                      -> output/             (site assets)
-    theme/                                       -> overrides framework theme files
-    site.toml                                    -> categories, languages, feed
+    site.toml                                   name, url, categories, languages
+    pages/<category>/YYYY-MM-DD-slug.md         -> output/slug.html
+    pages/<category>/YYYY-MM-DD-slug.<lang>.md  -> output/slug.<lang>.html  (translation)
+    pages/<category>/YYYY-MM-DD-slug/           -> output/slug/             (page assets)
+    static/                                     -> output/
+    theme/<file>                                overrides the built-in theme file
 
-No front matter: the filesystem carries the metadata (category = directory,
-date = filename prefix, language = filename suffix). The first `# ` line is the
-title, the first paragraph the description, timestamps come from git.
-
-Rendering: markdown-it-py (GitHub dialect + LaTeX math + wiki links), then a
-few passes here for what it lacks: callouts, heading ids, mermaid fences,
-link previews, glossary popups. Features light up per page when a page uses
-them; nothing is switched on per page by hand.
-
-    lamina init [DIR]                                    scaffold a new site
-    lamina build [--root DIR] [-o DIR]                   build the site
-    lamina check                                          build, fail on warnings
-    lamina serve [--port N]                               serve output/ locally
-    lamina watch                                          rebuild on change
-    lamina new CATEGORY SLUG [--title T]                  create a page
-    lamina vendor                                         self-host mermaid + MathJax in theme/vendor/
+No front matter. Category = directory, date = filename prefix, language =
+filename suffix, title = the first `# ` line, description = the first
+paragraph, created/updated = git history. A page whose slug is `index` is
+served at /. A filename starting with `_` is a draft. Warnings go to stderr
+as `lamina: ...`; `check` exits 1 if there were any. Every command takes
+--root DIR (the site, default .) and -o DIR (the output, default ROOT/output).
 """
 import argparse
 import functools
@@ -887,22 +878,28 @@ def cmd_vendor(root):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(prog='lamina', description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('--root', default='.', help='site directory (default: cwd)')
-    ap.add_argument('-o', '--output', help='output directory (default: ROOT/output)')
-    sub = ap.add_subparsers(dest='cmd')
-    sub.add_parser('build')
-    sub.add_parser('check')
-    s = sub.add_parser('serve')
-    s.add_argument('--port', type=int, default=8000)
-    sub.add_parser('watch')
-    n = sub.add_parser('new')
-    n.add_argument('category')
-    n.add_argument('slug')
-    n.add_argument('--title')
-    i = sub.add_parser('init')
-    i.add_argument('directory', nargs='?', help='site directory (default: --root)')
-    sub.add_parser('vendor')
+    ap = argparse.ArgumentParser(prog='lamina', description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    # --root and -o are accepted before or after the command
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument('--root', default=argparse.SUPPRESS, help='site directory (default: current directory)')
+    common.add_argument('-o', '--output', default=argparse.SUPPRESS, help='output directory (default: ROOT/output)')
+    ap.add_argument('--root', default='.', help=argparse.SUPPRESS)
+    ap.add_argument('-o', '--output', help=argparse.SUPPRESS)
+    sub = ap.add_subparsers(dest='cmd', metavar='command', title='commands (default: build)')
+    P = lambda name, help: sub.add_parser(name, help=help, description=help, parents=[common])
+    i = P('init', 'write site.toml and a first page into DIR, then stop')
+    i.add_argument('directory', metavar='DIR', nargs='?', help='site directory (default: --root)')
+    P('build', 'build the site into output/; prints a summary, warnings on stderr')
+    P('check', 'build, then exit 1 if there were warnings (dead links, bad anchors, unresolved [[terms]])')
+    s = P('serve', 'build, then serve output/ on 127.0.0.1 until Ctrl-C')
+    s.add_argument('--port', type=int, default=8000, help='default 8000')
+    P('watch', 'rebuild whenever pages/, static/, theme/ or site.toml change')
+    n = P('new', 'create pages/CATEGORY/<today>-SLUG.md and print its path')
+    n.add_argument('category', metavar='CATEGORY', help='a category dir from site.toml')
+    n.add_argument('slug', metavar='SLUG', help='lowercased; non [a-z0-9.-] runs become -')
+    n.add_argument('--title', metavar='TEXT', help='the # heading (default: SLUG)')
+    P('vendor', 'download mermaid and MathJax into theme/vendor/ so pages need no CDN')
     a = ap.parse_args(argv)
     root = Path(a.root)
     cmd = a.cmd or 'build'

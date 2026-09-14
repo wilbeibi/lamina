@@ -1,5 +1,7 @@
 # Lamina
 
+## Demo: [lamina-demo.pages.dev](https://lamina-demo.pages.dev/)
+
 Publish a directory of Markdown as a plain static site. No front matter: the
 filesystem carries the metadata. The output is ordinary files you can serve
 anywhere. It is for notes, research reports, and small documentation sites; it

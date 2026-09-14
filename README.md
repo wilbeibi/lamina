@@ -69,18 +69,11 @@ The first `[[category]]` is the landing page at `/`; later categories become
 `/<category>.html`. Canonical pages build as `/slug.html`; translations build
 as `/slug.<lang>.html`. URLs stay flat when you move a page between categories.
 
-Give the first category an `index_page` to serve one of its pages at `/`
-instead of the index list. The list moves to `/<dir>.html` and stays reachable
-from the page navigation, so the site reads as a single page at the root:
-
-```toml
-[[category]]
-dir = "notes"
-index_page = "hello-lamina"   # / serves that page; the list moves to /notes.html
-```
-
-`index_page` is only valid on the first category, and it names a page's slug.
-Without it the landing page stays an index of the category's pages.
+A page whose slug is `index` (for example `pages/notes/2026-09-08-index.md`)
+is served at `/` instead of the index list. The list moves to `/<dir>.html` and
+stays reachable from the page navigation, so the site reads as a single page at
+the root. Without such a page the landing page is an index of the first
+category's pages.
 
 The first `# ` heading becomes the page title and is removed from the body.
 The first prose paragraph becomes the description used by indexes, metadata,

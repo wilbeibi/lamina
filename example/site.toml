@@ -14,7 +14,6 @@ title = "notes"
 description = "notes, plans, and things being figured out"
 atom = true
 toc = true
-index_page = "hello-lamina"  # this page is served at /; the list moves to /notes.html
 
 [[category]]
 dir = "reports"

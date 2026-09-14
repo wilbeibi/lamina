@@ -16,7 +16,7 @@ Needs [uv](https://docs.astral.sh/uv/) and Python 3.11+. Git is optional and
 supplies created/updated dates.
 
 ```sh
-uv tool install git+ssh://git@github.com/wilbeibi/lamina
+uv tool install git+https://github.com/wilbeibi/lamina
 lamina init ~/src/notes && cd ~/src/notes
 lamina new notes my-first-page      # prints pages/notes/<today>-my-first-page.md
 lamina check                        # build + fail on dead links; output/ is the site

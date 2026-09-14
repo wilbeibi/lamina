@@ -1,4 +1,12 @@
-# Lamina
+<h1 align="center">Lamina — a just-enough static-site generator for Markdown folders</h1>
+
+<div align="center">
+
+### Publish a directory of Markdown as a plain static site
+
+<img src="assets/lamina-banner-reveal.png" alt="A small blue operator lifts the top page of a layered paper archive, revealing the preserved records beneath" width="800">
+
+</div>
 
 ## Demo: [lamina-demo.pages.dev](https://lamina-demo.pages.dev/)
 

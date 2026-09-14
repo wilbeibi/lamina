@@ -21,7 +21,7 @@ them; nothing is switched on per page by hand.
     lamina serve [--port N]                               serve output/ locally
     lamina watch                                          rebuild on change
     lamina new CATEGORY SLUG [--title T]                  create a page
-    lamina vendor                                         self-host mermaid + MathJax
+    lamina vendor                                         self-host mermaid + MathJax in theme/vendor/
 """
 import argparse
 import functools
@@ -453,8 +453,6 @@ class Ctx:
                         n, url = ln.split(None, 1)
                         self._vendor[n] = url.strip()
         local = self.root / 'theme' / 'vendor' / name
-        if not local.exists():
-            local = THEME / 'vendor' / name
         if local.exists():
             self.vendor_used.add(local)
             return f'/vendor/{name}'
@@ -789,7 +787,6 @@ def build(root, outdir=None):
 # ------------------------------------------------------------- commands --
 
 def cmd_serve(out, port):
-    import functools
     import http.server
     handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(out))
     handler.log_message = lambda *a, **k: None
@@ -889,9 +886,9 @@ def cmd_new(root, category, slug, title):
     print(f)
 
 
-def cmd_vendor():
-    dest = THEME / 'vendor'
-    dest.mkdir(exist_ok=True)
+def cmd_vendor(root):
+    dest = root / 'theme' / 'vendor'
+    dest.mkdir(parents=True, exist_ok=True)
     for ln in VENDOR_LIST.read_text().splitlines():
         if not ln.strip() or ln.startswith('#'):
             continue
@@ -937,7 +934,7 @@ def main(argv=None):
     elif cmd == 'init':
         cmd_init(Path(a.directory) if a.directory else root)
     elif cmd == 'vendor':
-        cmd_vendor()
+        cmd_vendor(root)
 
 
 if __name__ == '__main__':

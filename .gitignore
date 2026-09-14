@@ -1,4 +1,4 @@
-lamina/theme/vendor/
+theme/vendor/
 output/
 example/output/
 __pycache__/

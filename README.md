@@ -171,9 +171,8 @@ self-host them, run this before building:
 lamina vendor
 ```
 
-The files are written next to the installed package, so re-run this after
-reinstalling lamina. Lamina copies only the vendor files used by the site into
-`output/vendor/`.
+The files land in the site's `theme/vendor/` (add it to `.gitignore`), and
+the build copies only the ones the site uses into `output/vendor/`.
 
 ## Limits
 

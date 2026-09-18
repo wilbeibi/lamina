@@ -1,0 +1,21 @@
+README.md
+  s_f302adf731e943::t_7424224110acbf 71
+lamina/__init__.py
+  s_f302adf731e943::t_7424224110acbf 15,63,717,883,886,888,907,909,914,916
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dfb18d542e7e4f51021cc545813c2ed69b04aa03",
+  "prompts": {},
+  "sessions": {
+    "s_f302adf731e943": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61edaf43-0de1-46c6-bef2-678086185ff4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Hongyi Shen <wilbeibi@gmail.com>"
+    }
+  }
+}

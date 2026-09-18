@@ -29,7 +29,7 @@ supplies created/updated dates.
 uv tool install git+https://github.com/wilbeibi/lamina
 lamina init ~/src/notes && cd ~/src/notes
 lamina new notes my-first-page      # prints pages/notes/<today>-my-first-page.md
-lamina check                        # build + fail on dead links; output/ is the site
+lamina check                        # build + fail on dead links; public/ is the site
 lamina serve                        # http://127.0.0.1:8000/
 ```
 
@@ -45,7 +45,7 @@ pages/<category>/YYYY-MM-DD-slug.<lang>.md   -> /slug.<lang>.html   translation
 pages/<category>/YYYY-MM-DD-slug/            -> /slug/              page assets, copied verbatim
 static/                                      -> /                   site assets
 theme/<file>                                 overrides the built-in file of the same name
-output/                                      the built site
+public/                                      the built site
 ```
 
 - Category = directory, date = filename prefix, language = filename suffix.
@@ -68,7 +68,7 @@ description = ""
 url = ""                 # needed for the Atom feed and absolute links
 author = ""
 lang = "en"              # default page language
-output = "output"
+output = "public"
 glossary = ""            # slug of the page whose h2/h3 headings define [[terms]]
 toc_min = 3              # a toc category needs this many h2s before it gets a TOC
 footer = ""              # HTML appended to every footer: source link, license

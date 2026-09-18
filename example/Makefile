@@ -5,6 +5,6 @@ check serve watch:
 	@uv run lamina $@
 
 clean:
-	rm -rf output
+	rm -rf public
 
 .PHONY: all check serve watch clean

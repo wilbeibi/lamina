@@ -1,6 +1,6 @@
 theme/vendor/
-output/
-example/output/
+public/
+example/public/
 __pycache__/
 .venv/
 dist/

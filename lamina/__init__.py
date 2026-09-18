@@ -1,10 +1,10 @@
 """lamina — publish a directory of Markdown as a plain static site.
 
     site.toml                                   name, url, categories, languages
-    pages/<category>/YYYY-MM-DD-slug.md         -> output/slug.html
-    pages/<category>/YYYY-MM-DD-slug.<lang>.md  -> output/slug.<lang>.html  (translation)
-    pages/<category>/YYYY-MM-DD-slug/           -> output/slug/             (page assets)
-    static/                                     -> output/
+    pages/<category>/YYYY-MM-DD-slug.md         -> public/slug.html
+    pages/<category>/YYYY-MM-DD-slug.<lang>.md  -> public/slug.<lang>.html  (translation)
+    pages/<category>/YYYY-MM-DD-slug/           -> public/slug/             (page assets)
+    static/                                     -> public/
     theme/<file>                                overrides the built-in theme file
 
 No front matter. Category = directory, date = filename prefix, language =
@@ -12,7 +12,7 @@ filename suffix, title = the first `# ` line, description = the first
 paragraph, created/updated = git history. A page whose slug is `index` is
 served at /. A filename starting with `_` is a draft. Warnings go to stderr
 as `lamina: ...`; `check` exits 1 if there were any. Every command takes
---root DIR (the site, default .) and -o DIR (the output, default ROOT/output).
+--root DIR (the site, default .) and -o DIR (the output, default ROOT/public).
 """
 import argparse
 import functools
@@ -60,7 +60,7 @@ LANG_DEFAULTS = {
 
 SITE_DEFAULTS = {
     'name': 'site', 'description': '', 'url': '', 'author': '', 'lang': 'en',
-    'output': 'output', 'glossary': '', 'toc_min': 3, 'footer': '',
+    'output': 'public', 'glossary': '', 'toc_min': 3, 'footer': '',
 }
 
 
@@ -883,16 +883,16 @@ def main(argv=None):
     # --root and -o are accepted before or after the command
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument('--root', default=argparse.SUPPRESS, help='site directory (default: current directory)')
-    common.add_argument('-o', '--output', default=argparse.SUPPRESS, help='output directory (default: ROOT/output)')
+    common.add_argument('-o', '--output', default=argparse.SUPPRESS, help='output directory (default: ROOT/public)')
     ap.add_argument('--root', default='.', help=argparse.SUPPRESS)
     ap.add_argument('-o', '--output', help=argparse.SUPPRESS)
     sub = ap.add_subparsers(dest='cmd', metavar='command', title='commands (default: build)')
     P = lambda name, help: sub.add_parser(name, help=help, description=help, parents=[common])
     i = P('init', 'write site.toml and a first page into DIR, then stop')
     i.add_argument('directory', metavar='DIR', nargs='?', help='site directory (default: --root)')
-    P('build', 'build the site into output/; prints a summary, warnings on stderr')
+    P('build', 'build the site into public/; prints a summary, warnings on stderr')
     P('check', 'build, then exit 1 if there were warnings (dead links, bad anchors, unresolved [[terms]])')
-    s = P('serve', 'build, then serve output/ on 127.0.0.1 until Ctrl-C')
+    s = P('serve', 'build, then serve public/ on 127.0.0.1 until Ctrl-C')
     s.add_argument('--port', type=int, default=8000, help='default 8000')
     P('watch', 'rebuild whenever pages/, static/, theme/ or site.toml change')
     n = P('new', 'create pages/CATEGORY/<today>-SLUG.md and print its path')

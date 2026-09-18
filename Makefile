@@ -14,6 +14,6 @@ vendor:
 	@uv run lamina vendor
 
 clean:
-	rm -rf example/output
+	rm -rf example/public
 
 .PHONY: all example check serve vendor clean

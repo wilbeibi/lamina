@@ -12,7 +12,7 @@ filename suffix, title = the first `# ` line, description = the first
 paragraph, created/updated = git history. A page whose slug is `index` is
 served at /. A filename starting with `_` is a draft. Warnings go to stderr
 as `lamina: ...`; `check` exits 1 if there were any. Every command takes
---root DIR (the site, default .) and -o DIR (the output, default ROOT/public).
+--root DIR (the site, default .) and -o/--publish-dir DIR (default ROOT/public).
 """
 import argparse
 import functools
@@ -60,7 +60,7 @@ LANG_DEFAULTS = {
 
 SITE_DEFAULTS = {
     'name': 'site', 'description': '', 'url': '', 'author': '', 'lang': 'en',
-    'output': 'public', 'glossary': '', 'toc_min': 3, 'footer': '',
+    'publish_dir': 'public', 'glossary': '', 'toc_min': 3, 'footer': '',
 }
 
 
@@ -714,7 +714,7 @@ def build(root, outdir=None):
     WARNINGS.clear()
     root = root.resolve()
     site = load_site(root)
-    out = safe_outdir(root, Path(outdir) if outdir else root / site['output'])
+    out = safe_outdir(root, Path(outdir) if outdir else root / site['publish_dir'])
     pages = discover(root, site)
     ctx = Ctx(root, site, pages, out)
     if any(c['atom'] for c in site['category']) and not site['url']:
@@ -880,12 +880,12 @@ def cmd_vendor(root):
 def main(argv=None):
     ap = argparse.ArgumentParser(prog='lamina', description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    # --root and -o are accepted before or after the command
+    # --root and -o/--publish-dir are accepted before or after the command
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument('--root', default=argparse.SUPPRESS, help='site directory (default: current directory)')
-    common.add_argument('-o', '--output', default=argparse.SUPPRESS, help='output directory (default: ROOT/public)')
+    common.add_argument('-o', '--publish-dir', default=argparse.SUPPRESS, help='where to write the site (default: ROOT/public)')
     ap.add_argument('--root', default='.', help=argparse.SUPPRESS)
-    ap.add_argument('-o', '--output', help=argparse.SUPPRESS)
+    ap.add_argument('-o', '--publish-dir', help=argparse.SUPPRESS)
     sub = ap.add_subparsers(dest='cmd', metavar='command', title='commands (default: build)')
     P = lambda name, help: sub.add_parser(name, help=help, description=help, parents=[common])
     i = P('init', 'write site.toml and a first page into DIR, then stop')
@@ -904,16 +904,16 @@ def main(argv=None):
     root = Path(a.root)
     cmd = a.cmd or 'build'
     if cmd == 'build':
-        build(root, a.output)
+        build(root, a.publish_dir)
     elif cmd == 'check':
-        build(root, a.output)
+        build(root, a.publish_dir)
         if WARNINGS:
             die(f'{len(WARNINGS)} warnings')
         print('lamina: check ok')
     elif cmd == 'serve':
-        cmd_serve(build(root, a.output), a.port)
+        cmd_serve(build(root, a.publish_dir), a.port)
     elif cmd == 'watch':
-        cmd_watch(root, a.output)
+        cmd_watch(root, a.publish_dir)
     elif cmd == 'new':
         cmd_new(root, a.category, a.slug, a.title)
     elif cmd == 'init':

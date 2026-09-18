@@ -1,0 +1,29 @@
+.gitignore
+  s_f302adf731e943::t_168c952aaf8452 2-3
+lamina/__init__.py
+  s_f302adf731e943::t_73b9ff2106f28e 4-7,15,63,886,893,895
+example/pages/notes/2026-09-08-index.md
+  s_f302adf731e943::t_168c952aaf8452 42
+Makefile
+  s_f302adf731e943::t_168c952aaf8452 17
+README.md
+  s_f302adf731e943::t_168c952aaf8452 32,48,71
+example/Makefile
+  s_f302adf731e943::t_168c952aaf8452 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "df88afcded34c63eca610c78759ee26fa593a119",
+  "prompts": {},
+  "sessions": {
+    "s_f302adf731e943": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61edaf43-0de1-46c6-bef2-678086185ff4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Hongyi Shen <wilbeibi@gmail.com>"
+    }
+  }
+}

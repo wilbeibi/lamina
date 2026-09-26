@@ -69,7 +69,7 @@ url = ""                 # needed for the Atom feed and absolute links
 author = ""
 lang = "en"              # default page language
 publish_dir = "public"
-glossary = ""            # slug of the page whose h2/h3 headings define [[terms]]
+glossary = ""            # slug of the page that defines [[terms]] (see Markdown)
 toc_min = 3              # a toc category needs this many h2s before it gets a TOC
 footer = ""              # HTML appended to every footer: source link, license
 
@@ -112,6 +112,13 @@ First paragraph: the description.
 
 Heading ids are the heading text with spaces as `-`, CJK kept, duplicates
 numbered. Encode a space in a URL as `%20`.
+
+The glossary page defines `[[terms]]` two ways: each h2/h3 heading, and each
+list item that opens with bold text, `- **Term**: definition`. An item gets an
+id by the heading rule and previews its definition. It also answers to the
+term without parentheticals, to each parenthetical, and to each ` / `
+alternative: `**EPS (earnings per share)**` matches `[[EPS]]` and
+`[[earnings per share]]`, and `**long / short**` matches `[[long]]`.
 
 Features that turn on when a page uses them:
 

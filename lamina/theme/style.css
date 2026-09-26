@@ -134,6 +134,8 @@ summary { cursor: pointer; color: var(--muted); }
 h1, h2, h3 { text-wrap: balance; }
 h2, h3 { scroll-margin-top: 1rem; }
 h2:target, h3:target { text-decoration: underline; text-underline-offset: .3em; }
+li.term { scroll-margin-top: 1rem; }
+li.term:target { background: var(--code-bg); box-shadow: 0 0 0 .3rem var(--code-bg); }
 
 hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 img { max-width: 100%; }

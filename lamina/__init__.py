@@ -345,7 +345,7 @@ def markdown(math):
     return md
 
 
-def render_body(p):
+def render_body(p, glossary=False):
     text = callouts(p.body)
     md, env = markdown(p.cat['math']), {}
     tokens = md.parse(text, env)
@@ -393,6 +393,8 @@ def render_body(p):
             if m:
                 para = clip(plain(m.group(1)).strip(), 240)
         pv[ident] = (text, para)
+    if glossary:
+        h = define_terms(p, h, pv)
 
     # a sidenote after each note's first ref, shown in the margin when wide
     # (style.css). Notes with block content stay popup + endnote only.
@@ -405,6 +407,52 @@ def render_body(p):
     p.html = h
     p.pv = pv
     p.ids = {html.unescape(i) for i in re.findall(r'\sid="([^"]*)"', h)}
+
+
+# a glossary entry: a list item that opens with bold text, also inside a loose
+# item's <p> or a revision <ins>. Its definition runs to the item's first break.
+TERM_LI = re.compile(r'<li>(\s*(?:<p>)?\s*(?:<ins\b[^>]*>)?\s*<strong>(.*?)</strong>)', re.S)
+TERM_END = re.compile(r'</li>|</p>|<[uo]l\b')
+PAREN = re.compile(r'\s*[（(]([^（）()]*)[）)]')
+
+
+def term_keys(term):
+    """Other names an entry answers to: the term without its parentheticals,
+    each parenthetical, and each ` / ` alternative of those.
+    "EPS (earnings per share)" -> EPS, earnings per share; "long / short" -> long, short."""
+    names = [PAREN.sub('', term).strip(), *PAREN.findall(term)]
+    return [k.strip() for n in names for k in [n, *n.split(' / ')] if k.strip()]
+
+
+def define_terms(p, h, pv):
+    """A glossary's [[terms]]: its h2/h3 headings, then every "- **Term**: ..."
+    list item, which gets a heading-style id and a preview of its definition.
+    Headings win over entry names, and entry names over term_keys aliases."""
+    names, aliases, out, last = {}, {}, [], 0
+    taken = {html.unescape(i) for i in re.findall(r'\sid="([^"]*)"', h)}
+    for m in TERM_LI.finditer(h):
+        term = plain(m.group(2)).strip()
+        if not term:
+            continue
+        ident = base = re.sub(r'\s+', '-', term)
+        n = 1
+        while ident in taken:
+            n += 1
+            ident = f'{base}-{n}'
+        taken.add(ident)
+        e = TERM_END.search(h, m.end())
+        d = plain(h[m.end():e.start() if e else len(h)]).strip()
+        # a leading "(report links)" aside before the colon is navigation, not definition
+        d = re.sub(r'^[（(][^（）()]*[）)]\s*(?=[:：])', '', d).lstrip(' :：—–')
+        pv[ident] = (term, clip(d, 240))
+        names.setdefault(term.lower(), ident)
+        for k in term_keys(term):
+            aliases.setdefault(k.lower(), ident)
+        out += [h[last:m.start()], f'<li id="{html.escape(ident)}" class="term">', m.group(1)]
+        last = m.end()
+    heads = {text.lower(): ident for lvl, ident, text in p.headings if lvl <= 3}
+    p.terms = aliases | names | heads
+    return ''.join(out) + h[last:]
 
 
 # ------------------------------------------------------------- decorate --
@@ -428,14 +476,7 @@ class Ctx:
 
     def glossary_for(self, page):
         slug = page.cat['glossary']
-        if not slug:
-            return None
-        g = self.find_page(slug, page.lang)
-        if g is None:
-            return None
-        if g.terms is None:
-            g.terms = {text.lower(): ident for lvl, ident, text in g.headings if lvl <= 3}
-        return g
+        return self.find_page(slug, page.lang) if slug else None   # terms: define_terms()
 
     def vendor_url(self, name):
         if self._vendor is None:
@@ -728,9 +769,10 @@ def build(root, outdir=None):
     ctx = Ctx(root, site, pages, out)
     if any(c['atom'] for c in site['category']) and not site['url']:
         warn('atom feed needs `url` in site.toml; feed skipped')
+    glossaries = {c['glossary'] for c in site['category']}
     for p in pages:
         parse(p)
-        render_body(p)
+        render_body(p, p.slug in glossaries)
         stamps(p, root, site)
     for p in pages:
         decorate(p, ctx)

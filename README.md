@@ -77,6 +77,7 @@ footer = ""              # HTML appended to every footer: source link, license
 name = "中文"
 updated = "更新"
 missing = "暂无{name}版"
+contents = "目录"         # TOC heading
 
 [[category]]
 dir = "notes"            # pages/notes/

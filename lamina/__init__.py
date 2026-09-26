@@ -54,8 +54,8 @@ def die(msg, code=1):
 # ----------------------------------------------------------------- config --
 
 LANG_DEFAULTS = {
-    'en': {'name': 'EN', 'updated': 'updated', 'missing': 'no {name} version yet'},
-    'zh': {'name': '中文', 'updated': '更新', 'missing': '暂无{name}版'},
+    'en': {'name': 'EN', 'updated': 'updated', 'missing': 'no {name} version yet', 'contents': 'Contents'},
+    'zh': {'name': '中文', 'updated': '更新', 'missing': '暂无{name}版', 'contents': '目录'},
 }
 
 SITE_DEFAULTS = {
@@ -542,7 +542,8 @@ def decorate(p, ctx):
         shown = [(lvl, i, t) for lvl, i, t in p.headings if lvl in (2, 3)]
         items = ''.join(f'<li class="toc-h{lvl}"><a href="#{urllib.parse.quote(i)}">{html.escape(t)}</a></li>'
                         for lvl, i, t in shown)
-        p.toc = (f'<nav class="toc" aria-label="Contents"><p class="toc-title">Contents</p>'
+        label = html.escape(ctx.site['langs'][p.lang].get('contents', 'Contents'))
+        p.toc = (f'<nav class="toc" aria-label="{label}"><p class="toc-title">{label}</p>'
                  f'<ol>{items}</ol></nav>')
 
 

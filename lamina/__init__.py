@@ -176,6 +176,12 @@ def discover(root, site):
 
 
 TAG = re.compile(r'<[^>]+>')
+FNREF = re.compile(r'<sup class="fn"[^>]*>.*?</sup>', re.S)
+
+
+def plain(h):
+    """Rendered HTML as text for descriptions and previews: tags and footnote refs dropped."""
+    return html.unescape(TAG.sub('', FNREF.sub('', h)))
 
 
 def parse(p):
@@ -202,7 +208,7 @@ def describe(md, tokens, env):
     """The first top-level paragraph, as plain text: the page description."""
     for i, t in enumerate(tokens):
         if t.type == 'paragraph_open' and t.level == 0:
-            s = html.unescape(TAG.sub('', md.renderer.renderInline(tokens[i + 1].children, md.options, env)))
+            s = plain(md.renderer.renderInline(tokens[i + 1].children, md.options, env))
             s = re.sub(f'(?<={CJK})\n(?={CJK})', '', s)
             return clip(re.sub(r'\s+', ' ', s).strip(), 160)
     return ''
@@ -372,17 +378,9 @@ def render_body(p):
     # footnote bodies feed the hover popups (minus the back link)
     p.notes = [(n, re.sub(r' <a href="#fnref-[^"]*" class="fnback"[^<]*</a>', '', body))
                for n, body in re.findall(r'<li id="fn-(\d+)">(.*?)</li>', h, re.S)]
-    # ...and a sidenote after the first ref, shown in the margin when wide
-    # (style.css). Notes with block content stay popup + endnote only.
-    for n, body in p.notes:
-        if re.search(r'<(pre|ul|ol|div|blockquote|table)\b', body):
-            continue
-        inner = re.sub(r'</p>\s*<p>', '<br>', body.strip()).removeprefix('<p>').removesuffix('</p>')
-        at = h.find('</sup>', h.find(f'<sup class="fn" id="fnref-{n}">')) + 6
-        h = f'{h[:at]}<span class="sn"><b>{n}</b> {inner}</span>{h[at:]}'
-    p.html = h
 
-    # previews: '' -> (title, description); heading id -> (heading, first paragraph)
+    # previews: '' -> (title, description); heading id -> (heading, first
+    # paragraph). Taken before the sidenotes go in, so no note text leaks in.
     pv = {'': (p.title, p.description)}
     for lvl, ident, text in p.headings:
         pos = h.find(f'<h{lvl} id="{html.escape(ident, quote=False).replace(chr(34), "&quot;")}">')
@@ -393,8 +391,18 @@ def render_body(p):
             seg = seg[:nxt.start() + 10] if nxt else seg
             m = re.search(r'<p>(.*?)</p>', seg, re.S)
             if m:
-                para = clip(html.unescape(TAG.sub('', m.group(1))).strip(), 240)
+                para = clip(plain(m.group(1)).strip(), 240)
         pv[ident] = (text, para)
+
+    # a sidenote after each note's first ref, shown in the margin when wide
+    # (style.css). Notes with block content stay popup + endnote only.
+    for n, body in p.notes:
+        if re.search(r'<(pre|ul|ol|div|blockquote|table)\b', body):
+            continue
+        inner = re.sub(r'</p>\s*<p>', '<br>', body.strip()).removeprefix('<p>').removesuffix('</p>')
+        at = h.find('</sup>', h.find(f'<sup class="fn" id="fnref-{n}">')) + 6
+        h = f'{h[:at]}<span class="sn"><b>{n}</b> {inner}</span>{h[at:]}'
+    p.html = h
     p.pv = pv
     p.ids = {html.unescape(i) for i in re.findall(r'\sid="([^"]*)"', h)}
 

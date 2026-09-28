@@ -308,8 +308,12 @@ def asides(md):
         if end < 0:
             return False
         if not silent:
+            # parse into a fresh list: the nested parse's post-processing joins
+            # text tokens, which would shift the outer paragraph's delimiter indexes
+            inner = []
+            state.md.inline.parse(src[pos + 3:end], state.md, state.env, inner)
             state.push('html_inline', '', 0).content = '<span class="aside">'
-            state.md.inline.parse(src[pos + 3:end], state.md, state.env, state.tokens)
+            state.tokens.extend(inner)
             state.push('html_inline', '', 0).content = '</span>'
         state.pos = end + 1
         return True

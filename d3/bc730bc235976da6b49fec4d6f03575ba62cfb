@@ -1,0 +1,20 @@
+lamina/theme/style.css
+  s_0809610418a008::t_112263cf2f40c4 128,130-131
+  s_0809610418a008::t_5bb326ef54fd9a 280-281,284,290-307
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d3bc730bc235976da6b49fec4d6f03575ba62cfb",
+  "prompts": {},
+  "sessions": {
+    "s_0809610418a008": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b1f4b1a-1fa5-448e-80b5-0e8f8b1ee334",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Hongyi Shen <wilbeibi@gmail.com>"
+    }
+  }
+}

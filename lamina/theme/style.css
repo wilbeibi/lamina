@@ -125,10 +125,10 @@ blockquote {
    (level with what follows it) once there is room, like the sidenotes. */
 .callout-aside { border-left-color: var(--rule); background: none; color: var(--muted); font-size: .875rem; }
 .callout-aside p { margin: .25rem 0; }
-@media (min-width: 84rem) {
+@media (min-width: 48rem) {
 	.callout-aside {
-		float: right; clear: right; width: 14rem;
-		margin: .15rem -16.5rem .75rem 0; padding: 0; border: 0;
+		float: right; clear: right; width: var(--note-w);
+		margin: .15rem calc(-1 * (var(--note-w) + var(--note-gap))) .75rem 0; padding: 0; border: 0;
 		font-size: .8rem; line-height: 1.45;
 	}
 }
@@ -277,14 +277,33 @@ sup.fn a:target { outline: 1px solid var(--link); }
    has no number: muted in the line, and in the margin the same way. */
 .sn { display: none; }
 .aside { color: var(--muted); font-size: .875em; margin-left: .3em; }
-@media (min-width: 84rem) {
+:root { --note-w: 14rem; --note-gap: 2.5rem; }  /* gap: column edge to note */
+@media (min-width: 48rem) {
 	.sn, .aside {
 		display: block; float: right; clear: right;
-		width: 14rem; margin: .15rem -16.5rem .75rem 0;
+		width: var(--note-w); margin: .15rem calc(-1 * (var(--note-w) + var(--note-gap))) .75rem 0;
 		color: var(--muted); font-size: .8rem; line-height: 1.45;
 	}
 	.sn b { color: var(--fg); font-weight: 600; margin-right: .15em; }
 	.footnotes { display: none; }
+}
+/* Below 84rem the full column leaves no margin, so a page with margin notes
+   narrows its column instead of pulling the notes back into the text. Centered
+   pages center column and margin together; beside the contents sidebar the
+   column keeps its left edge and gives up width on the right. */
+@media (min-width: 48rem) and (max-width: 83.99rem) {
+	:root { --note-w: 12rem; --note-gap: 2rem; }
+	body:has(.sn, .aside, .callout-aside) {
+		--col: min(46rem, calc(100vw - 3rem - var(--note-w) - var(--note-gap)));
+		max-width: var(--col);
+		margin-left: calc((100vw - var(--col) - 1rem - var(--note-w) - var(--note-gap)) / 2);
+	}
+}
+@media (min-width: 64rem) and (max-width: 83.99rem) {
+	body:has(nav.toc):has(.sn, .aside, .callout-aside) {
+		--col: min(46rem, calc(100vw - var(--col-left) - 2rem - var(--note-w) - var(--note-gap)));
+		margin-left: var(--col-left);
+	}
 }
 /* Hovering an aside or the words it is about lights up both (lamina.js). */
 .as-on { background: var(--hl); border-radius: 2px; }

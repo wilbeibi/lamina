@@ -1,0 +1,19 @@
+lamina/__init__.py
+  s_0809610418a008::t_f9e80a2798d22a 311-314,316
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8512973f66f7301c632bd6b24ebba3743ff2a5a3",
+  "prompts": {},
+  "sessions": {
+    "s_0809610418a008": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b1f4b1a-1fa5-448e-80b5-0e8f8b1ee334",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Hongyi Shen <wilbeibi@gmail.com>"
+    }
+  }
+}

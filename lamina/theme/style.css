@@ -11,6 +11,7 @@
 	--important-bg: #f1f8fa;
 	--warning: #a05a13;
 	--warning-bg: #fff7ed;
+	--hl: #f8e7a1;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -27,6 +28,7 @@
 		--important-bg: #142429;
 		--warning: #e0a15e;
 		--warning-bg: #2a2118;
+		--hl: #4a4020;
 	}
 }
 
@@ -243,6 +245,14 @@ a { overflow-wrap: anywhere; }
 	padding: .55rem .8rem; font-size: .85rem; line-height: 1.5;
 	box-shadow: 0 4px 16px rgba(0,0,0,.14);
 }
+/* Frosted where the browser can blur: the page shows through, still readable. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+	.pop {
+		background: color-mix(in srgb, var(--bg) 78%, transparent);
+		-webkit-backdrop-filter: blur(3px);
+		backdrop-filter: blur(3px);
+	}
+}
 .pop p { margin: .15rem 0; }
 .pop .pop-c { color: var(--muted); font-size: .78rem; }
 .pop .pop-t { font-weight: 600; }
@@ -276,6 +286,9 @@ sup.fn a:target { outline: 1px solid var(--link); }
 	.sn b { color: var(--fg); font-weight: 600; margin-right: .15em; }
 	.footnotes { display: none; }
 }
+/* Hovering an aside or the words it is about lights up both (lamina.js). */
+.as-on { background: var(--hl); border-radius: 2px; }
+.aside.as-on, .callout-aside.as-on { color: var(--fg); box-shadow: 0 0 0 .3rem var(--hl); }
 
 /* Table of contents (category `toc = true`). It is inline by default and
    becomes a left-side minimap only when there is room beside the 46rem page. */

@@ -17,6 +17,8 @@ as `lamina: ...`; `check` exits 1 if there were any. Every command takes
 import argparse
 import functools
 import html
+import html.parser
+import json
 import re
 import shutil
 import subprocess
@@ -25,6 +27,7 @@ import time
 import tomllib
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import date as _date
 from pathlib import Path
@@ -299,7 +302,19 @@ def wikilinks(md):
 
 # ^[~remark] is an author's aside: an inline footnote without the number,
 # popup, or endnote. style.css keeps it in the line, or in the margin when wide.
+# [these words]^[~remark] also marks the words it is about (<span class="as-t">);
+# without them lamina.js takes the clause before the aside. Hovering either
+# side highlights both.
 def asides(md):
+    def emit(state, start, end, html_open):
+        # parse into a fresh list: the nested parse's post-processing joins
+        # text tokens, which would shift the outer paragraph's delimiter indexes
+        inner = []
+        state.md.inline.parse(state.src[start:end], state.md, state.env, inner)
+        state.push('html_inline', '', 0).content = html_open
+        state.tokens.extend(inner)
+        state.push('html_inline', '', 0).content = '</span>'
+
     def rule(state, silent):
         src, pos = state.src, state.pos
         if not src.startswith('^[~', pos):
@@ -308,16 +323,27 @@ def asides(md):
         if end < 0:
             return False
         if not silent:
-            # parse into a fresh list: the nested parse's post-processing joins
-            # text tokens, which would shift the outer paragraph's delimiter indexes
-            inner = []
-            state.md.inline.parse(src[pos + 3:end], state.md, state.env, inner)
-            state.push('html_inline', '', 0).content = '<span class="aside">'
-            state.tokens.extend(inner)
-            state.push('html_inline', '', 0).content = '</span>'
+            emit(state, pos + 3, end, '<span class="aside">')
         state.pos = end + 1
         return True
 
+    def span(state, silent):
+        src, pos = state.src, state.pos
+        if src[pos] != '[':
+            return False
+        mid = state.md.helpers.parseLinkLabel(state, pos)
+        if mid < 0 or not src.startswith('^[~', mid + 1):
+            return False
+        end = state.md.helpers.parseLinkLabel(state, mid + 2)
+        if end < 0:
+            return False
+        if not silent:
+            emit(state, pos + 1, mid, '<span class="as-t">')
+            emit(state, mid + 4, end, '<span class="aside">')
+        state.pos = end + 1
+        return True
+
+    md.inline.ruler.before('link', 'aside_span', span)
     md.inline.ruler.before('footnote_inline', 'aside', rule)
 
 
@@ -485,6 +511,77 @@ def define_terms(p, h, pv):
     return ''.join(out) + h[last:]
 
 
+# ------------------------------------------------------------------ links --
+# `lamina links` fetches each external link's page title and description into
+# links.json at the site root (commit it). The build only reads that file, so
+# it stays offline; a link with no entry gets no popup.
+
+LINKS_FILE = 'links.json'
+
+
+def link_key(url):
+    return urllib.parse.urldefrag(url).url
+
+
+def read_links(root):
+    f = root / LINKS_FILE
+    return json.loads(f.read_text(encoding='utf-8')) if f.exists() else {}
+
+
+class HeadMeta(html.parser.HTMLParser):
+    """<title> and <meta name|property=... content=...> from a page's <head>."""
+    def __init__(self):
+        super().__init__()
+        self.meta, self.title, self.in_title, self.done = {}, '', False, False
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        if tag == 'meta' and a.get('content'):
+            k = (a.get('property') or a.get('name') or '').lower()
+            self.meta.setdefault(k, a['content'])
+        elif tag == 'title':
+            self.in_title = True
+        elif tag == 'body':
+            self.done = True
+
+    def handle_endtag(self, tag):
+        if tag == 'title':
+            self.in_title = False
+        elif tag == 'head':
+            self.done = True
+
+    def handle_data(self, data):
+        if self.in_title:
+            self.title += data
+
+
+def fetch_link(url):
+    """{title, description} of an HTML page, or None if it can't be had."""
+    req = urllib.request.Request(url, headers={
+        'User-Agent': 'Mozilla/5.0 (compatible; lamina link previews)',
+        'Accept': 'text/html,application/xhtml+xml'})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            if 'html' not in r.headers.get_content_type():
+                return None
+            raw = r.read(512 * 1024)
+            text = raw.decode(r.headers.get_content_charset() or 'utf-8', errors='replace')
+    except Exception:
+        return None
+    hm = HeadMeta()
+    for i in range(0, len(text), 8192):
+        hm.feed(text[i:i + 8192])
+        if hm.done:
+            break
+    m = hm.meta
+    tidy = lambda s: re.sub(r'\s+', ' ', html.unescape(s or '')).strip()
+    title = tidy(m.get('og:title') or m.get('twitter:title') or hm.title)
+    desc = tidy(m.get('og:description') or m.get('twitter:description') or m.get('description'))
+    if not (title or desc):
+        return None
+    return {'title': clip(title, 120), 'description': clip(desc, 240)}
+
+
 # ------------------------------------------------------------- decorate --
 
 class Ctx:
@@ -499,6 +596,8 @@ class Ctx:
         self.vendor_used = set()
         self.cdn_warned = set()
         self._vendor = None
+        self.links = read_links(root)           # external url -> {title, description}; `lamina links`
+        self.external = set()                   # external urls the pages link to
 
     def find_page(self, slug, lang):
         v = self.by_slug.get(slug)
@@ -530,6 +629,7 @@ class Ctx:
 
 
 LINK_RE = re.compile(r'<a\b([^>]*?)\shref="([^"]*)"([^>]*)>')
+TITLE_RE = re.compile(r'\stitle="([^"]*)"')
 WL_RE = re.compile(r'<x-wikilink data-target="([^"]*)">(.*?)</x-wikilink>', re.S)
 INTERNAL_RE = re.compile(r'^/?([^/#?]+\.html)?(?:#(.*))?$')
 
@@ -585,10 +685,33 @@ def decorate(p, ctx):
         return f'<a href="{href}" class="wl"{attr}>{label}</a>'
     h = WL_RE.sub(wl, p.html)
 
+    def external(url, note):
+        """An outside link's popup: its site, then the title and description
+        `lamina links` cached, with a link title ("...") as the description."""
+        key = link_key(url)
+        ctx.external.add(key)
+        got = ctx.links.get(key, {})
+        title, body = got.get('title', ''), note or got.get('description', '')
+        if not (title or body):
+            return None
+        if (key, note) in keys:
+            return keys[key, note]
+        host = urllib.parse.urlsplit(key).netloc.removeprefix('www.')
+        pid = keys[key, note] = f'pop-{len(pops) + 1}'
+        pops[pid] = (f'<p class="pop-c">{html.escape(host)}</p>'
+                     + (f'<p class="pop-t">{html.escape(title)}</p>' if title else '')
+                     + (f'<p>{html.escape(body)}</p>' if body else ''))
+        return pid
+
     def lk(m):
         a1, href, a3 = m.groups()
         if 'data-pop' in a1 + a3:
             return m.group(0)
+        url = html.unescape(href)
+        if url.startswith(('http://', 'https://')):
+            t = TITLE_RE.search(a1 + a3)
+            pid = external(url, html.unescape(t.group(1)) if t else '')
+            return f'<a{a1} href="{href}"{a3} data-pop="{pid}">' if pid else m.group(0)
         im = INTERNAL_RE.match(urllib.parse.unquote(html.unescape(href)))
         if not im:
             known, exists = page_asset(ctx, href)
@@ -790,15 +913,10 @@ def theme_file(root, name):
     return None
 
 
-def build(root, outdir=None):
-    WARNINGS.clear()
-    root = root.resolve()
-    site = load_site(root)
-    out = safe_outdir(root, Path(outdir) if outdir else root / site['publish_dir'])
+def load(root, site, out):
+    """Discover, parse, and decorate every page: everything but the writing."""
     pages = discover(root, site)
     ctx = Ctx(root, site, pages, out)
-    if any(c['atom'] for c in site['category']) and not site['url']:
-        warn('atom feed needs `url` in site.toml; feed skipped')
     glossaries = {c['glossary'] for c in site['category']}
     for p in pages:
         parse(p)
@@ -806,6 +924,18 @@ def build(root, outdir=None):
         stamps(p, root, site)
     for p in pages:
         decorate(p, ctx)
+    return ctx
+
+
+def build(root, outdir=None):
+    WARNINGS.clear()
+    root = root.resolve()
+    site = load_site(root)
+    out = safe_outdir(root, Path(outdir) if outdir else root / site['publish_dir'])
+    ctx = load(root, site, out)
+    pages = ctx.pages
+    if any(c['atom'] for c in site['category']) and not site['url']:
+        warn('atom feed needs `url` in site.toml; feed skipped')
 
     if out.exists():
         shutil.rmtree(out)
@@ -865,9 +995,9 @@ def signature(root):
             for f in base.rglob('*'):
                 if f.is_file():
                     sig = max(sig, f.stat().st_mtime_ns)
-    st = root / 'site.toml'
-    if st.exists():
-        sig = max(sig, st.stat().st_mtime_ns)
+    for st in (root / 'site.toml', root / LINKS_FILE):
+        if st.exists():
+            sig = max(sig, st.stat().st_mtime_ns)
     return sig
 
 
@@ -958,6 +1088,28 @@ def cmd_vendor(root):
             shutil.copyfileobj(r, w)
 
 
+def cmd_links(root, refresh):
+    root = root.resolve()
+    site = load_site(root)
+    ctx = load(root, site, root / site['publish_dir'])
+    # entries for links no page has any more are dropped; a failed refetch keeps the old one
+    cache = {u: v for u, v in ctx.links.items() if u in ctx.external}
+    todo = sorted(ctx.external if refresh else ctx.external - cache.keys())
+    print(f'lamina: {len(ctx.external)} external links, fetching {len(todo)}')
+    miss = []
+    with ThreadPoolExecutor(8) as ex:
+        for url, got in zip(todo, ex.map(fetch_link, todo)):
+            if got:
+                cache[url] = got
+            elif url not in cache:
+                miss.append(url)
+    for url in miss:
+        print(f'lamina: no preview for {url}', file=sys.stderr)
+    (root / LINKS_FILE).write_text(json.dumps(dict(sorted(cache.items())), ensure_ascii=False, indent=1) + '\n',
+                                   encoding='utf-8')
+    print(f'lamina: {len(cache)} previews in {root / LINKS_FILE} ({len(miss)} unavailable)')
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog='lamina', description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -981,6 +1133,8 @@ def main(argv=None):
     n.add_argument('slug', metavar='SLUG', help='lowercased; non [a-z0-9.-] runs become -')
     n.add_argument('--title', metavar='TEXT', help='the # heading (default: SLUG)')
     P('vendor', 'download mermaid and MathJax into theme/vendor/ so pages need no CDN')
+    lk = P('links', 'fetch titles and descriptions of external links into links.json for hover previews')
+    lk.add_argument('--refresh', action='store_true', help='refetch every link, not just new ones')
     a = ap.parse_args(argv)
     root = Path(a.root)
     cmd = a.cmd or 'build'
@@ -1001,6 +1155,8 @@ def main(argv=None):
         cmd_init(Path(a.directory) if a.directory else root)
     elif cmd == 'vendor':
         cmd_vendor(root)
+    elif cmd == 'links':
+        cmd_links(root, a.refresh)
 
 
 if __name__ == '__main__':

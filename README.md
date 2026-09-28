@@ -111,7 +111,8 @@ First paragraph: the description.
 ```
 
 `^[~remark]` is an aside: an unnumbered inline note beside its words, in the
-margin when wide, with no popup or endnote.
+margin when wide, with no popup or endnote. Hovering it highlights its sentence
+up to the aside, and hovering those words highlights the aside; `[these words]^[~remark]` picks the words instead.
 
 Heading ids are the heading text with spaces as `-`, CJK kept, duplicates
 numbered. Encode a space in a URL as `%20`.
@@ -137,6 +138,13 @@ Features that turn on when a page uses them:
 Mermaid and MathJax load from pinned jsDelivr URLs. `lamina vendor` downloads
 them into the site's `theme/vendor/` (gitignore it) and the build copies the
 ones in use to `/vendor/`.
+
+Outside links get a hover preview too. `lamina links` fetches each linked
+page's title and description into `links.json` at the site root; commit it,
+and rerun after adding links (`--refresh` refetches them all). The build only
+reads that file, so it never touches the network. A link title,
+`[text](https://… "one line")`, replaces the fetched description; private
+pages, PDFs, and sites that block the fetch get a popup only if they have one.
 
 ## Theme
 

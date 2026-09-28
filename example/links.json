@@ -1,0 +1,10 @@
+{
+ "https://github.com/executablebooks/markdown-it-py": {
+  "title": "GitHub - executablebooks/markdown-it-py: Markdown parser, done right. 100% CommonMark support, extensions, syntax…",
+  "description": "Markdown parser, done right. 100% CommonMark support, extensions, syntax plugins & high speed. Now in Python! - executablebooks/markdown-it-py"
+ },
+ "https://gwern.net/design": {
+  "title": "Design Of This Website",
+  "description": "Meta page describing Gwern.net, the self-documenting website’s implementation and experiments for better ‘semantic zoom’ of hypertext; technical decisions using Markdown and static hosting."
+ }
+}

@@ -13,7 +13,10 @@ serve:
 vendor:
 	@uv run lamina vendor
 
+links:
+	@uv run lamina --root example links
+
 clean:
 	rm -rf example/public
 
-.PHONY: all example check serve vendor clean
+.PHONY: all example check serve vendor links clean

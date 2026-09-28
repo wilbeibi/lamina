@@ -52,7 +52,7 @@ public/                                      the built site
   URLs are flat, so a slug must be unique across the site and moving a page
   between categories does not change its URL.
 - Title = the first `# ` line (removed from the body). Description = the first
-  paragraph. Created/updated = git history of the file.
+  paragraph outside callouts. Created/updated = git history of the file.
 - The first category is the landing page at `/`; other categories list at
   `/<dir>.html`. A page whose slug is `index` is served at `/` instead, and the
   first category's list moves to `/<dir>.html`.
@@ -110,6 +110,9 @@ First paragraph: the description.
 [^1]: Footnotes show as sidenotes on wide screens and popups elsewhere.
 ```
 
+`^[~remark]` is an aside: an unnumbered inline note beside its words, in the
+margin when wide, with no popup or endnote.
+
 Heading ids are the heading text with spaces as `-`, CJK kept, duplicates
 numbered. Encode a space in a URL as `%20`.
 
@@ -128,6 +131,7 @@ Features that turn on when a page uses them:
 | ```` ```mermaid ```` | diagram rendered in the browser, source as fallback |
 | `$x$`, `$$…$$` | MathJax SVG; `$5` and `$5-$10` stay prose |
 | `> [!NOTE]` / `[!IMPORTANT]` / `[!WARNING]` | callout |
+| `> [!ASIDE] text` | untitled remark in the right margin when wide, inline otherwise |
 | `<ins datetime="2026-09-13" data-d="09-13">` | revision mark with a date badge |
 
 Mermaid and MathJax load from pinned jsDelivr URLs. `lamina vendor` downloads

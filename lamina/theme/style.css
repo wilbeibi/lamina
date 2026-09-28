@@ -99,7 +99,7 @@ blockquote {
 }
 
 /* A deliberately small Obsidian-compatible callout subset. Ordinary quotes
-   keep the treatment above; callouts carry only note, important, or warning. */
+   keep the treatment above; callouts carry only note, important, warning, or aside. */
 .callout {
 	--callout: var(--note);
 	--callout-bg: var(--note-bg);
@@ -119,6 +119,17 @@ blockquote {
 	text-transform: uppercase;
 }
 .callout > :last-child { margin-bottom: 0; }
+/* An aside is a margin remark: a muted inline note, and beside the column
+   (level with what follows it) once there is room, like the sidenotes. */
+.callout-aside { border-left-color: var(--rule); background: none; color: var(--muted); font-size: .875rem; }
+.callout-aside p { margin: .25rem 0; }
+@media (min-width: 84rem) {
+	.callout-aside {
+		float: right; clear: right; width: 14rem;
+		margin: .15rem -16.5rem .75rem 0; padding: 0; border: 0;
+		font-size: .8rem; line-height: 1.45;
+	}
+}
 
 /* GFM and hand-written tables scroll instead of blowing out the page. */
 .t { overflow-x: auto; margin: 1.25rem 0; }
@@ -252,10 +263,12 @@ sup.fn a:target { outline: 1px solid var(--link); }
 .footnotes p { margin: .25rem 0; }
 .fnback { text-decoration: none; margin-left: .25em; }
 /* Sidenotes: with room beside the column, each note floats into the right
-   margin level with its ref and the endnote list goes away. */
+   margin level with its ref and the endnote list goes away. An ^[~aside]
+   has no number: muted in the line, and in the margin the same way. */
 .sn { display: none; }
+.aside { color: var(--muted); font-size: .875em; margin-left: .3em; }
 @media (min-width: 84rem) {
-	.sn {
+	.sn, .aside {
 		display: block; float: right; clear: right;
 		width: 14rem; margin: .15rem -16.5rem .75rem 0;
 		color: var(--muted); font-size: .8rem; line-height: 1.45;

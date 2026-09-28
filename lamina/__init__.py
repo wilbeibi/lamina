@@ -176,11 +176,11 @@ def discover(root, site):
 
 
 TAG = re.compile(r'<[^>]+>')
-FNREF = re.compile(r'<sup class="fn"[^>]*>.*?</sup>', re.S)
+FNREF = re.compile(r'<sup class="fn"[^>]*>.*?</sup>|<span class="aside">.*?</span>', re.S)
 
 
 def plain(h):
-    """Rendered HTML as text for descriptions and previews: tags and footnote refs dropped."""
+    """Rendered HTML as text for descriptions and previews: tags, footnote refs, and asides dropped."""
     return html.unescape(TAG.sub('', FNREF.sub('', h)))
 
 
@@ -205,9 +205,13 @@ CJK = r'[\u2e80-\u9fff\uf900-\ufaff\uff00-\uffef]'
 
 
 def describe(md, tokens, env):
-    """The first top-level paragraph, as plain text: the page description."""
+    """The first top-level paragraph, as plain text: the page description.
+    Callouts (<aside>, see callouts()) are side remarks, not the lede."""
+    inside = False
     for i, t in enumerate(tokens):
-        if t.type == 'paragraph_open' and t.level == 0:
+        if t.type == 'html_block' and t.content.startswith(('<aside', '</aside')):
+            inside = t.content.startswith('<aside')
+        elif t.type == 'paragraph_open' and t.level == 0 and not inside:
             s = plain(md.renderer.renderInline(tokens[i + 1].children, md.options, env))
             s = re.sub(f'(?<={CJK})\n(?={CJK})', '', s)
             return clip(re.sub(r'\s+', ' ', s).strip(), 160)
@@ -226,7 +230,7 @@ def clip(s, n):
 # -------------------------------------------------------------- markdown --
 
 FENCE = re.compile(r'^\s{0,3}(`{3,}|~{3,})')
-CALLOUT_START = re.compile(r'^\s{0,3}>\s*\[!(NOTE|IMPORTANT|WARNING)\](?:\s+(.*?))?\s*$', re.I)
+CALLOUT_START = re.compile(r'^\s{0,3}>\s*\[!(NOTE|IMPORTANT|WARNING|ASIDE)\](?:\s+(.*?))?\s*$', re.I)
 CALLOUT_LINE = re.compile(r'^\s{0,3}> ?(.*)$')
 
 
@@ -248,7 +252,8 @@ def callouts(text):
             continue
         kind = start.group(1).lower()
         title = start.group(2) or kind.title()
-        body, i = [], i + 1
+        # an aside has no title; "> [!ASIDE] a few words" is the whole remark
+        body, i = [start.group(2)] if kind == 'aside' and start.group(2) else [], i + 1
         while i < len(lines):
             q = CALLOUT_LINE.match(lines[i])
             if not q:
@@ -257,7 +262,7 @@ def callouts(text):
             i += 1
         out.extend([
             f'<aside class="callout callout-{kind}">',
-            f'<p class="callout-title">{html.escape(title)}</p>',
+            *([] if kind == 'aside' else [f'<p class="callout-title">{html.escape(title)}</p>']),
             '', *body, '', '</aside>',
         ])
     return '\n'.join(out)
@@ -292,11 +297,31 @@ def wikilinks(md):
     md.add_render_rule('wikilink', render)
 
 
+# ^[~remark] is an author's aside: an inline footnote without the number,
+# popup, or endnote. style.css keeps it in the line, or in the margin when wide.
+def asides(md):
+    def rule(state, silent):
+        src, pos = state.src, state.pos
+        if not src.startswith('^[~', pos):
+            return False
+        end = state.md.helpers.parseLinkLabel(state, pos + 1)
+        if end < 0:
+            return False
+        if not silent:
+            state.push('html_inline', '', 0).content = '<span class="aside">'
+            state.md.inline.parse(src[pos + 3:end], state.md, state.env, state.tokens)
+            state.push('html_inline', '', 0).content = '</span>'
+        state.pos = end + 1
+        return True
+
+    md.inline.ruler.before('footnote_inline', 'aside', rule)
+
+
 @functools.cache
 def markdown(math):
     md = (MarkdownIt('commonmark', {'html': True, 'linkify': True, 'xhtmlOut': False})
           .enable(['table', 'strikethrough', 'linkify'])
-          .use(tasklists_plugin).use(footnote_plugin).use(wikilinks))
+          .use(tasklists_plugin).use(footnote_plugin).use(wikilinks).use(asides))
     # autolink only a real scheme. Never a bare e-mail, never a bare domain --
     # prose is full of "fly.io" and "DESIGN.md" that must stay text.
     md.linkify.set({'fuzzy_email': False, 'fuzzy_link': False})
@@ -389,6 +414,7 @@ def render_body(p, glossary=False):
             seg = h[pos:]
             nxt = re.search(r'<h[2-4]', seg[10:])
             seg = seg[:nxt.start() + 10] if nxt else seg
+            seg = re.sub(r'<aside\b.*?</aside>', '', seg, flags=re.S)
             m = re.search(r'<p>(.*?)</p>', seg, re.S)
             if m:
                 para = clip(plain(m.group(1)).strip(), 240)

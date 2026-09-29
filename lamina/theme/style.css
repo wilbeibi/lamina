@@ -129,7 +129,7 @@ blockquote {
 	.callout-aside {
 		float: right; clear: right; width: var(--note-w);
 		margin: .15rem calc(-1 * (var(--note-w) + var(--note-gap))) .75rem 0; padding: 0; border: 0;
-		font-size: .8rem; line-height: 1.45;
+		font-size: .875rem; line-height: 1.5;
 	}
 }
 
@@ -276,13 +276,18 @@ sup.fn a:target { outline: 1px solid var(--link); }
    margin level with its ref and the endnote list goes away. An ^[~aside]
    has no number: muted in the line, and in the margin the same way. */
 .sn { display: none; }
-.aside { color: var(--muted); font-size: .875em; margin-left: .3em; }
+.aside {
+	color: var(--muted); font-size: .875em; margin-left: .3em;
+	background: var(--note-bg); padding: .05em .35em; border-radius: 3px;
+	-webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
 :root { --note-w: 14rem; --note-gap: 2.5rem; }  /* gap: column edge to note */
 @media (min-width: 48rem) {
 	.sn, .aside {
 		display: block; float: right; clear: right;
 		width: var(--note-w); margin: .15rem calc(-1 * (var(--note-w) + var(--note-gap))) .75rem 0;
-		color: var(--muted); font-size: .8rem; line-height: 1.45;
+		color: var(--muted); font-size: .875rem; line-height: 1.5;
+		background: none; padding: 0;
 	}
 	.sn b { color: var(--fg); font-weight: 600; margin-right: .15em; }
 	.footnotes { display: none; }
@@ -305,9 +310,15 @@ sup.fn a:target { outline: 1px solid var(--link); }
 		margin-left: var(--col-left);
 	}
 }
+/* A table scrolls sideways, so an aside floated out of a cell would be cut
+   off at the table's edge: in a cell it stays in the line at every width. */
+td .aside, th .aside {
+	display: inline; float: none; width: auto; margin: 0 0 0 .3em;
+	background: var(--note-bg); padding: .05em .35em; font-size: .875em; line-height: inherit;
+}
 /* Hovering an aside or the words it is about lights up both (lamina.js). */
 .as-on { background: var(--hl); border-radius: 2px; }
-.aside.as-on, .callout-aside.as-on { color: var(--fg); box-shadow: 0 0 0 .3rem var(--hl); }
+.aside.as-on, .callout-aside.as-on { color: var(--fg); background: var(--hl); box-shadow: 0 0 0 .3rem var(--hl); }
 
 /* Table of contents (category `toc = true`). It is inline by default and
    becomes a left-side minimap only when there is room beside the 46rem page. */

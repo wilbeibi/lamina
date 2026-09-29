@@ -138,7 +138,7 @@
         trailing = false;
       }
       for (j = to; j > 0 && !stop(t, j - 1); j--);
-      while (j < to && /\s/.test(t[j])) j++;
+      if (j > 0) while (j < to && /\s/.test(t[j])) j++;   // after a stop only: " words" past **bold** goes on
       if (j < to) parts.push([texts[i], j, to]);
       if (j > 0) break;
     }

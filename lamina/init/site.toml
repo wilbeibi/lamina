@@ -4,8 +4,6 @@
 name = "{name}"
 description = ""
 url = ""
-author = ""
-lang = "en"
 
 [[category]]
 dir = "notes"

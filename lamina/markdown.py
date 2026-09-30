@@ -114,7 +114,7 @@ def tex(tag: str, o: str, c: str, tail: str = '') -> RenderRule:
     return lambda s, t, i, opts, env: f'<{tag} class="math">{o}{html.escape(t[i].content.strip())}{c}</{tag}>{tail}'
 
 @functools.cache
-def parser(math: bool) -> MarkdownIt:
+def parser() -> MarkdownIt:
     md = (MarkdownIt('commonmark', {'html': True, 'linkify': True, 'xhtmlOut': False})
           .enable(['table', 'strikethrough', 'linkify'])
           .use(tasklists_plugin).use(footnote_plugin).use(wikilinks).use(asides))
@@ -137,18 +137,17 @@ def parser(math: bool) -> MarkdownIt:
     # GFM tables get the same scroll/breakout wrapper hand-written ones use
     md.add_render_rule('table_open', lambda s, t, i, o, e: '<div class="t"><table>\n')
     md.add_render_rule('table_close', lambda s, t, i, o, e: '</table></div>\n')
-    if math:
-        # no space inside the delimiters, no digit hugging them -- keeps
-        # "$5-$10" and "raised $Y @ $Z" in prose out of math
-        md.use(dollarmath_plugin, double_inline=True,
-               allow_space=False, allow_digits=False)
+    # no space inside the delimiters, no digit hugging them -- keeps
+    # "$5-$10" and "raised $Y @ $Z" in prose out of math
+    md.use(dollarmath_plugin, double_inline=True,
+           allow_space=False, allow_digits=False)
 
-        # MathJax delimiters, emitted directly. Display blocks get their own
-        # div (scrolls when wide); a labelled block stays inline in a <p> so
-        # the label can follow it.
-        display = tex('span', '\\[', '\\]')
-        md.add_render_rule('math_inline', tex('span', '\\(', '\\)'))
-        md.add_render_rule('math_inline_double', display)
-        md.add_render_rule('math_block', tex('div', '\\[', '\\]', '\n'))
-        md.add_render_rule('math_block_label', lambda s, t, i, o, e: f'<p>{display(s, t, i, o, e)} ({t[i].info})</p>\n')
+    # MathJax delimiters, emitted directly. Display blocks get their own
+    # div (scrolls when wide); a labelled block stays inline in a <p> so
+    # the label can follow it.
+    display = tex('span', '\\[', '\\]')
+    md.add_render_rule('math_inline', tex('span', '\\(', '\\)'))
+    md.add_render_rule('math_inline_double', display)
+    md.add_render_rule('math_block', tex('div', '\\[', '\\]', '\n'))
+    md.add_render_rule('math_block_label', lambda s, t, i, o, e: f'<p>{display(s, t, i, o, e)} ({t[i].info})</p>\n')
     return md

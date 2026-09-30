@@ -31,24 +31,15 @@ class Category(msgspec.Struct, forbid_unknown_fields=True):
     dir: str
     title: str = ''                 # default: dir
     description: str = ''
-    lang: str = ''                  # default: the site's
+    lang: str = 'en'
     translations: list[str] = []
-    index: str = ''                 # default: index.html for the first category, else <dir>.html
-    atom: bool = False
-    math: bool = True
-    toc: bool = False
-    glossary: str | None = None     # default: the site's
+    index: str = ''                 # set by load_site: index.html for the first category, else <dir>.html
 
 class Site(msgspec.Struct, forbid_unknown_fields=True):
     """site.toml with every default filled in."""
     name: str = 'site'
     description: str = ''
     url: str = ''
-    author: str = ''
-    lang: str = 'en'
-    publish_dir: str = 'public'
-    glossary: str = ''
-    toc_min: int = 3
     footer: str = ''
     langs: dict[str, Lang] = {}
     category: list[Category] = []
@@ -69,10 +60,7 @@ def load_site(root: Path) -> Site:
         die('site.toml needs at least one [[category]]')
     for i, cat in enumerate(site.category):
         cat.title = cat.title or cat.dir
-        cat.lang = cat.lang or site.lang
-        cat.index = cat.index or ('index.html' if i == 0 else f'{cat.dir}.html')
-        if cat.glossary is None:
-            cat.glossary = site.glossary
+        cat.index = 'index.html' if i == 0 else f'{cat.dir}.html'
         for lang in [cat.lang, *cat.translations]:
             if lang not in site.langs:
                 die(f'category {cat.dir}: unknown language {lang!r} (add [langs.{lang}] to site.toml)')

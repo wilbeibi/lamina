@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .config import THEME, WARNINGS, Category, Site, die, load_site, warn
 from .links import read_links
-from .pages import Page, discover, render_body, stamps
+from .pages import Page, discover, is_glossary, render_body, stamps
 
 # pinned on purpose: a page that uses math or mermaid loads these from the CDN
 MATHJAX_URL = 'https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js'
@@ -25,7 +25,7 @@ class Ctx:
         self.by_slug: dict[str, dict[str, Page]] = {}    # slug -> {lang: page}; outputs are flat, so slugs are unique
         for p in pages:
             self.by_slug.setdefault(p.slug, {})[p.lang] = p
-        self.feed = any(c.atom for c in site.category) and bool(site.url)
+        self.feed = bool(site.url)                        # the atom feed needs absolute links
         self.links = read_links(root)                     # external url -> {title, description}; `lamina links`
         self.external: set[str] = set()                   # external urls the pages link to
 
@@ -37,10 +37,13 @@ class Ctx:
         return versions.get(lang) or next(iter(versions.values()))
 
     def glossary_for(self, page: Page) -> Page | None:
-        """The glossary page whose .terms (see define_terms) resolve [[terms]] here, if any."""
-        if not page.cat.glossary:
-            return None
-        return self.find_page(page.cat.glossary, page.lang)
+        """The glossary page (see define_terms) whose .terms resolve [[terms]] here: this page's
+        category's, else any on the site; in its language if there is one."""
+        g = [p for p in self.pages if is_glossary(p.slug)]
+        own = [p for p in g if p.cat == page.cat] or g
+        return next((p for p in own if p.lang == page.lang), own[0] if own else None)
+
+TOC_MIN = 3   # h2s a page needs before it gets a table of contents
 
 LINK_RE = re.compile(r'<a\b([^>]*?)\shref="([^"]*)"([^>]*)>')
 TITLE_RE = re.compile(r'\stitle="([^"]*)"')
@@ -137,7 +140,7 @@ def decorate(p: Page, ctx: Ctx) -> None:
     p.pops = ('<div hidden>' + ''.join(f'<template id="{k}">{v}</template>' for k, v in pops.items()) + '</div>') if pops else ''
 
     p.toc = ''
-    if p.cat.toc and sum(hd.level == 2 for hd in p.headings) >= ctx.site.toc_min:
+    if sum(hd.level == 2 for hd in p.headings) >= TOC_MIN:
         items = ''.join(f'<li class="toc-h{hd.level}"><a href="#{urllib.parse.quote(hd.id)}">{html.escape(hd.text)}</a></li>'
                         for hd in p.headings if hd.level in (2, 3))
         label = html.escape(ctx.site.langs[p.lang].contents)
@@ -245,7 +248,7 @@ def index_html(cat: Category, ctx: Ctx) -> str:
 
 def atom_xml(ctx: Ctx) -> str:
     site = ctx.site
-    entries = newest(p for p in ctx.pages if p.cat.atom and p.canonical)
+    entries = newest(p for p in ctx.pages if p.canonical and p.cat == site.category[0])   # the landing category is the feed
     url = site.url.rstrip('/')
     item_t = tpl(ctx, 'atom-item.xml')
     items = ''.join(render(item_t, {
@@ -255,7 +258,7 @@ def atom_xml(ctx: Ctx) -> str:
     updated = max((p.atom_updated for p in entries), default='1970-01-01T00:00:00Z')
     return render(tpl(ctx, 'atom.xml'), {
         'site_name': html.escape(site.name), 'description': html.escape(site.description),
-        'url': url, 'author': html.escape(site.author), 'updated': updated, 'items': items,
+        'url': url, 'author': html.escape(site.name), 'updated': updated, 'items': items,
     })
 
 def safe_outdir(root: Path, out: Path) -> Path:
@@ -270,9 +273,8 @@ def load(root: Path, site: Site) -> Ctx:
     """Discover, parse, and decorate every page: everything but the writing."""
     pages = discover(root, site)
     ctx = Ctx(root, site, pages)
-    glossaries = {c.glossary for c in site.category}
     for p in pages:
-        render_body(p, p.slug in glossaries)
+        render_body(p)
         stamps(p, root, site)
     for p in pages:
         decorate(p, ctx)
@@ -282,11 +284,9 @@ def build(root: Path) -> Path:
     WARNINGS.clear()
     root = root.resolve()
     site = load_site(root)
-    out = safe_outdir(root, root / site.publish_dir)
+    out = safe_outdir(root, root / 'public')
     ctx = load(root, site)
     pages = ctx.pages
-    if any(c.atom for c in site.category) and not site.url:
-        warn('atom feed needs `url` in site.toml; feed skipped')
 
     if out.exists():
         shutil.rmtree(out)

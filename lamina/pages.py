@@ -170,9 +170,9 @@ def callouts(text: str) -> str:
         ])
     return '\n'.join(out)
 
-def render_body(p: Page, glossary: bool = False) -> None:
+def render_body(p: Page) -> None:
     text = callouts(parse(p))
-    md = parser(p.cat.math)
+    md = parser()
     env: EnvType = {}
     tokens = md.parse(text, env)
     h: str = md.renderer.render(tokens, md.options, env)
@@ -192,7 +192,7 @@ def render_body(p: Page, glossary: bool = False) -> None:
         seg = re.split(r'<h[2-4]', h[pos + 10:], maxsplit=1)[0] if pos >= 0 else ''
         m = re.search(r'<p>(.*?)</p>', re.sub(r'<aside\b.*?</aside>', '', seg, flags=re.DOTALL), re.DOTALL)
         pv[hd.id] = (hd.text, clip(plain(m.group(1)).strip(), 240) if m else '')
-    if glossary:
+    if is_glossary(p.slug):
         h = define_terms(p, h, pv)
 
     # a sidenote after each note's first ref, shown in the margin when wide
@@ -219,6 +219,10 @@ def term_keys(term: str) -> list[str]:
     "EPS (earnings per share)" -> EPS, earnings per share; "long / short" -> long, short."""
     names = [PAREN.sub('', term).strip(), *PAREN.findall(term)]
     return [k.strip() for n in names for k in [n, *n.split(' / ')] if k.strip()]
+
+def is_glossary(slug: str) -> bool:
+    """`glossary` or `<anything>-glossary` is its category's glossary; outputs are flat, hence the prefix."""
+    return slug == 'glossary' or slug.endswith('-glossary')
 
 def define_terms(p: Page, h: str, pv: dict[str, Preview]) -> str:
     """A glossary's [[terms]]: its h2/h3 headings, then every "- **Term**: ..."

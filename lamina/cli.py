@@ -10,7 +10,8 @@
 No front matter. Category = directory, date = filename prefix, language =
 filename suffix, title = the first `# ` line, description = the first
 paragraph, created/updated = git history. A page whose slug is `index` is
-served at /. A filename starting with `_` is a draft. Warnings go to stderr
+served at /; `glossary` or `<x>-glossary` defines its category's [[terms]]. A filename
+starting with `_` is a draft. Warnings go to stderr
 as `lamina: ...`; `check` exits 1 if there were any. Run commands in the
 site directory.
 """
@@ -136,8 +137,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             die(f'{len(WARNINGS)} warnings')
         print('lamina: check ok')
 
-    command('init', 'write site.toml and a first page into DIR (default: here), then stop', lambda a: cmd_init(Path(a.directory))
-            ).add_argument('directory', metavar='DIR', nargs='?', default='.')
+    command('init', 'write site.toml and a first page here, then stop', lambda a: cmd_init(root))
     command('build', 'build the site into public/; prints a summary, warnings on stderr', lambda a: build(root))
     command('check', 'build, then exit 1 if there were warnings (dead links, bad anchors, unresolved [[terms]])', check)
     command('serve', f'build, then serve public/ at http://127.0.0.1:{PORT}/ until Ctrl-C', lambda a: cmd_serve(build(root)))

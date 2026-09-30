@@ -1,10 +1,10 @@
 all:
-	@uv run lamina build
+	@uv run lamina
 
-check serve watch:
+serve links:
 	@uv run lamina $@
 
 clean:
 	rm -rf public
 
-.PHONY: all check serve watch clean
+.PHONY: all serve links clean

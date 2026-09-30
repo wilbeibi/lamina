@@ -1,155 +1,43 @@
-<h1 align="center">Lamina: a just-enough static-site generator for markdown</h1>
+<h1 align="center">Lamina</h1>
 
 <div align="center">
 
-### Publish a directory of Markdown as a plain static site
+### A just enough HTML page generator for markdown files
 
 <img src="assets/lamina-banner-reveal.png" alt="A small blue operator lifts the top page of a layered paper archive, revealing the preserved records beneath" width="800">
 
+**[See it live: lamina-demo.pages.dev](https://lamina-demo.pages.dev/)**
+
 </div>
 
-## Check it alive: [lamina-demo.pages.dev](https://lamina-demo.pages.dev/)
+Think of the best long read you've found online. The notes sat beside the
+sentence. Every link showed you where it led before you clicked. You never
+lost your place.
 
-Publish a directory of Markdown as a plain static site. No front matter: the
-filesystem carries the metadata. The output is ordinary files you can serve
-anywhere. It is for notes, research reports, and small documentation sites; it
-deliberately has no search, tags, comments, pagination, syntax highlighting,
-plugins, or deployment.
+Lamina builds that page.
 
-Every command is non-interactive, prints what it wrote, sends warnings to
-stderr as `lamina: ...`, and `check` exits 1 if there were any. `lamina --help`
-is complete.
+<img src="assets/screenshot-hero.png" alt="A Lamina page: a contents minimap on the left, a glossary term's definition open in a hover preview, and two margin notes on the right beside the sentences they belong to">
 
-## Start
+## Why Lamina
 
-Needs [uv](https://docs.astral.sh/uv/) and Python 3.11+. Git is optional and
-supplies created/updated dates.
+- **You only write.** No front matter.
+- **Pages stay light.** Plain HTML that reads with JavaScript off.
+- **Small enough to own.** About 1k lines of Python, no options, no plugins.
+
+## Who it is for
+
+Minimalists and greybeards who think a website is a folder of HTML files.
+
+Want tags? Use Hugo. Want AI search? Use Mintlify. Want a graph? Use Obsidian Publish.
+
+## Try it
 
 ```sh
 uv tool install git+https://github.com/wilbeibi/lamina
-lamina init ~/src/notes && cd ~/src/notes
-lamina new notes my-first-page      # prints pages/notes/<today>-my-first-page.md
-lamina check                        # build + fail on dead links; public/ is the site
-lamina serve                        # http://127.0.0.1:8000/
+mkdir -p notes/pages/notes && cd notes
+printf 'name = "notes"\n\n[[category]]\ndir = "notes"\n' > site.toml
+printf '# Hello\n\nThe title is the first line, the description this paragraph.\n' > pages/notes/2026-09-29-hello.md
+lamina serve
 ```
 
-`lamina watch` rebuilds on change. `--root DIR` and `-o DIR` work on every
-command. `example/` is a complete site that uses every feature.
-
-## Layout
-
-```text
-site.toml                                    settings (below)
-pages/<category>/YYYY-MM-DD-slug.md          -> /slug.html
-pages/<category>/YYYY-MM-DD-slug.<lang>.md   -> /slug.<lang>.html   translation
-pages/<category>/YYYY-MM-DD-slug/            -> /slug/              page assets, copied verbatim
-static/                                      -> /                   site assets
-theme/<file>                                 overrides the built-in file of the same name
-public/                                      the built site
-```
-
-- Category = directory, date = filename prefix, language = filename suffix.
-  URLs are flat, so a slug must be unique across the site and moving a page
-  between categories does not change its URL.
-- Title = the first `# ` line (removed from the body). Description = the first
-  paragraph outside callouts. Created/updated = git history of the file.
-- The first category is the landing page at `/`; other categories list at
-  `/<dir>.html`. A page whose slug is `index` is served at `/` instead, and the
-  first category's list moves to `/<dir>.html`.
-- A filename starting with `_` is a draft and is skipped.
-
-## site.toml
-
-Every key, with its default. Only `[[category]]` and its `dir` are required.
-
-```toml
-name = "site"
-description = ""
-url = ""                 # needed for the Atom feed and absolute links
-author = ""
-lang = "en"              # default page language
-publish_dir = "public"
-glossary = ""            # slug of the page that defines [[terms]] (see Markdown)
-toc_min = 3              # a toc category needs this many h2s before it gets a TOC
-footer = ""              # HTML appended to every footer: source link, license
-
-[langs.zh]               # built in: en, zh. Add others like this.
-name = "中文"
-updated = "更新"
-missing = "暂无{name}版"
-contents = "目录"         # TOC heading
-
-[[category]]
-dir = "notes"            # pages/notes/
-title = "notes"          # default: dir
-description = ""
-index = "notes.html"     # the list page; default: index.html first, <dir>.html after
-lang = "en"              # default: site lang
-translations = []        # e.g. ["en"] for pages/notes/*.en.md
-atom = false             # include in /atom.xml
-toc = false              # table of contents on long pages
-math = true              # $x$ and $$...$$ via MathJax
-glossary = ""            # default: site glossary
-```
-
-## Markdown
-
-GitHub-flavored: tables, fenced code, strikethrough, footnotes, task lists,
-`<details>`, raw HTML. Links are checked at build time; a dead link, a bad
-`#anchor`, or an unresolved `[[term]]` is a warning.
-
-```markdown
-# Title
-
-First paragraph: the description.
-
-## A section
-
-[another page](other.html#A-section) · [[Term]] · [[Term|label]] · note[^1]
-
-[^1]: Footnotes show as sidenotes on wide screens and popups elsewhere.
-```
-
-`^[~remark]` is an aside: an unnumbered inline note beside its words, in the
-margin when wide, with no popup or endnote. Hovering it highlights its sentence
-up to the aside, and hovering those words highlights the aside; `[these words]^[~remark]` picks the words instead.
-
-Heading ids are the heading text with spaces as `-`, CJK kept, duplicates
-numbered. Encode a space in a URL as `%20`.
-
-The glossary page defines `[[terms]]` two ways: each h2/h3 heading, and each
-list item that opens with bold text, `- **Term**: definition`. An item gets an
-id by the heading rule and previews its definition. It also answers to the
-term without parentheticals, to each parenthetical, and to each ` / `
-alternative: `**EPS (earnings per share)**` matches `[[EPS]]` and
-`[[earnings per share]]`, and `**long / short**` matches `[[long]]`.
-
-Features that turn on when a page uses them:
-
-| Source | Result |
-|---|---|
-| pipe table | sortable, scrolls inside the column |
-| ```` ```mermaid ```` | diagram rendered in the browser, source as fallback |
-| `$x$`, `$$…$$` | MathJax SVG; `$5` and `$5-$10` stay prose |
-| `> [!NOTE]` / `[!IMPORTANT]` / `[!WARNING]` | callout |
-| `> [!ASIDE] text` | untitled remark in the right margin when wide, inline otherwise |
-| `<ins datetime="2026-09-13" data-d="09-13">` | revision mark with a date badge |
-
-Mermaid and MathJax load from pinned jsDelivr URLs. `lamina vendor` downloads
-them into the site's `theme/vendor/` (gitignore it) and the build copies the
-ones in use to `/vendor/`.
-
-Outside links get a hover preview too. `lamina links` fetches each linked
-page's title and description into `links.json` at the site root; commit it,
-and rerun after adding links (`--refresh` refetches them all). The build only
-reads that file, so it never touches the network. A link title,
-`[text](https://… "one line")`, replaces the fetched description; private
-pages, PDFs, and sites that block the fetch get a popup only if they have one.
-
-## Theme
-
-System fonts, light and dark by OS setting. Put a file named `style.css`,
-`lamina.js`, `favicon.svg`, `page.html`, `index.html`, `index-item.html`,
-`atom.xml`, or `atom-item.xml` in `theme/` to replace the built-in one;
-`theme/site.css` is appended to the stylesheet instead of replacing it.
-Templates use `{{name}}` placeholders; read the built-in ones for the names.
+The rest is in [SKILL.md](SKILL.md): the reference for you, a skill for your agent.

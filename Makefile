@@ -1,11 +1,8 @@
-# Framework-level targets. A site has its own Makefile (see example/Makefile).
+# Framework-level targets. A site needs none: `lamina` builds, `lamina serve` serves.
 all: example
 
-example:
-	@cd example && uv run lamina build
-
-check serve links:
-	@cd example && uv run lamina $@
+example serve links:
+	@cd example && uv run lamina $(subst example,,$@)
 
 lint:
 	@uv run mypy
@@ -14,4 +11,4 @@ lint:
 clean:
 	rm -rf example/public
 
-.PHONY: all example check serve links lint clean
+.PHONY: all example serve links lint clean

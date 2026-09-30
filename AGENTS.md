@@ -7,26 +7,23 @@ uploaded directly to Cloudflare Pages; the project has no git integration, so
 it updates only when deployed by hand. From the repo root:
 
 ```sh
-make check
+make
 wrangler pages deploy example/public --project-name lamina-demo --branch main \
   --commit-hash "$(git rev-parse HEAD)" --commit-message "$(git log -1 --format=%s)"
 ```
 
-## Writing annotations
+## Code
 
-Asides follow Ink & Switch's margin notes: about two per 1,000 words,
-never two on one paragraph.
+- Opinionated: conventions over config, no CLI flags, no plugins. Prefer
+  removing an option to adding one. A dependency must be small, high quality,
+  and replace real code (msgspec, markdown-it); the stdlib otherwise.
+- Hand-formatted: single quotes, one blank line between definitions, no banner
+  comments, no formatter. `make lint` runs mypy --strict and ruff.
+- No tests. `make check` builds `example/`; a refactor must leave
+  `example/public` byte-identical, and a feature change reports its diff.
+- SKILL.md is the user-facing reference and the skill for their agents. Update
+  it, `lamina --help` and `lamina/init/site.toml` with every user-visible change.
 
-- `^[~…]`: a skippable remark about one sentence, such as a source, example,
-  caveat, detail or pointer. One or two sentences that stand alone; aim for
-  35 words, never over 60. Put it at the end of the sentence; use
-  `[words]^[~…]` only to gloss a term.
-- `> [!ASIDE]`: a remark about a whole paragraph or section, or one of 35–60
-  words. Inline, a long remark splits the paragraph on a phone.
-- Over 60 words, or code or a figure: body text or an appendix, with a
-  short aside pointing to it.
-- Anything the argument needs goes in the body; a gloss under 10 words
-  goes in parentheses.
-- `[^n]`: formal citations, or a source cited more than once.
-- Callouts: only what the reader must not skip.
-- Never an image in an aside, or a figure's source (use the caption).
+## Writing pages
+
+SKILL.md, "Writing annotations", applies to `example/` too.

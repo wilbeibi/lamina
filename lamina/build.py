@@ -1,26 +1,18 @@
 """The whole site: cross-page links and popups, templates, and writing public/."""
-import functools
 import html
 import re
 import shutil
-import sys
 import urllib.parse
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 
-from .config import THEME, VENDOR_LIST, WARNINGS, Category, Site, die, load_site, warn
+from .config import THEME, WARNINGS, Category, Site, die, load_site, warn
 from .links import read_links
 from .pages import Page, discover, render_body, stamps
 
-@functools.cache
-def vendor_list() -> dict[str, str]:
-    """name -> url, from vendor.txt."""
-    urls = {}
-    for ln in VENDOR_LIST.read_text().splitlines():
-        if ln.strip() and not ln.startswith('#'):
-            name, url = ln.split()[:2]
-            urls[name] = url
-    return urls
+# pinned on purpose: a page that uses math or mermaid loads these from the CDN
+MATHJAX_URL = 'https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js'
+MERMAID_URL = 'https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.min.js'
 
 class Ctx:
     """Everything decorate() and the templates need to know about the whole site."""
@@ -34,8 +26,6 @@ class Ctx:
         for p in pages:
             self.by_slug.setdefault(p.slug, {})[p.lang] = p
         self.feed = any(c.atom for c in site.category) and bool(site.url)
-        self.vendor_used: set[Path] = set()
-        self.cdn_warned: set[str] = set()
         self.links = read_links(root)                     # external url -> {title, description}; `lamina links`
         self.external: set[str] = set()                   # external urls the pages link to
 
@@ -52,25 +42,9 @@ class Ctx:
             return None
         return self.find_page(page.cat.glossary, page.lang)
 
-    def vendor_url(self, name: str) -> str:
-        local = self.root / 'theme' / 'vendor' / name
-        if local.exists():
-            self.vendor_used.add(local)
-            return f'/vendor/{name}'
-        url = vendor_list().get(name)
-        if url is None:
-            die(f'no vendor entry for {name} in {VENDOR_LIST}')
-        if name not in self.cdn_warned:
-            self.cdn_warned.add(name)
-            print(f'lamina: {name} loads from CDN (run `lamina vendor` to self-host)', file=sys.stderr)
-        return url
-
 LINK_RE = re.compile(r'<a\b([^>]*?)\shref="([^"]*)"([^>]*)>')
-
 TITLE_RE = re.compile(r'\stitle="([^"]*)"')
-
 WL_RE = re.compile(r'<x-wikilink data-target="([^"]*)">(.*?)</x-wikilink>', re.DOTALL)
-
 INTERNAL_RE = re.compile(r'^/?([^/#?]+\.html)?(?:#(.*))?$')
 
 def dead_asset(ctx: Ctx, href: str) -> bool:
@@ -231,8 +205,8 @@ def page_html(p: Page, ctx: Ctx) -> str:
     site = ctx.site
     nav, alt = langnav(p, ctx)
     head = [alt, feed_link(ctx),
-            MATHJAX_CFG + f'\n<script defer src="{ctx.vendor_url("tex-svg.js")}"></script>' if p.math else '',
-            f'<script defer src="{ctx.vendor_url("mermaid.min.js")}"></script>' if p.mermaid else '',
+            MATHJAX_CFG + f'\n<script defer src="{MATHJAX_URL}"></script>' if p.math else '',
+            f'<script defer src="{MERMAID_URL}"></script>' if p.mermaid else '',
             '<script defer src="/lamina.js"></script>']
     footer = [f'<a href="{href_of(p.cat)}">← {html.escape(p.cat.title)}</a>',
               '<a href="/atom.xml">atom</a>' if ctx.feed else '', site.footer]
@@ -304,11 +278,11 @@ def load(root: Path, site: Site) -> Ctx:
         decorate(p, ctx)
     return ctx
 
-def build(root: Path, outdir: str | None = None) -> Path:
+def build(root: Path) -> Path:
     WARNINGS.clear()
     root = root.resolve()
     site = load_site(root)
-    out = safe_outdir(root, Path(outdir) if outdir else root / site.publish_dir)
+    out = safe_outdir(root, root / site.publish_dir)
     ctx = load(root, site)
     pages = ctx.pages
     if any(c.atom for c in site.category) and not site.url:
@@ -334,9 +308,6 @@ def build(root: Path, outdir: str | None = None) -> Path:
     for name in ('lamina.js', 'favicon.svg'):
         if f := theme_file(root, name):
             shutil.copy(f, out / name)
-    for f in ctx.vendor_used:
-        (out / 'vendor').mkdir(exist_ok=True)
-        shutil.copy(f, out / 'vendor' / f.name)
     static = root / 'static'
     if static.is_dir():
         for f in static.rglob('*.html'):

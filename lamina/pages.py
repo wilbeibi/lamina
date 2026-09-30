@@ -96,7 +96,6 @@ def discover(root: Path, site: Site) -> list[Page]:
     return pages
 
 TAG = re.compile(r'<[^>]+>')
-
 FNREF = re.compile(r'<sup class="fn"[^>]*>.*?</sup>|<span class="aside">.*?</span>', re.DOTALL)
 
 def plain(h: str) -> str:
@@ -150,9 +149,7 @@ def clip(s: str, n: int) -> str:
     return cut.rstrip(' ,;:，；：') + '…'
 
 FENCE = re.compile(r'^\s{0,3}(`{3,}|~{3,})')
-
 CALLOUT_START = re.compile(r'^\s{0,3}>\s*\[!(NOTE|IMPORTANT|WARNING|ASIDE)\](?:\s+(.*?))?\s*$', re.IGNORECASE)
-
 CALLOUT_LINE = re.compile(r'^\s{0,3}> ?(.*)$')
 
 def callouts(text: str) -> str:
@@ -240,9 +237,7 @@ def render_body(p: Page, glossary: bool = False) -> None:
 # a glossary entry: a list item that opens with bold text, also inside a loose
 # item's <p> or a revision <ins>. Its definition runs to the item's first break.
 TERM_LI = re.compile(r'<li>(\s*(?:<p>)?\s*(?:<ins\b[^>]*>)?\s*<strong>(.*?)</strong>)', re.DOTALL)
-
 TERM_END = re.compile(r'</li>|</p>|<[uo]l\b')
-
 PAREN = re.compile(r'\s*[（(]([^（）()]*)[）)]')
 
 def term_keys(term: str) -> list[str]:

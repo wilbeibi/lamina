@@ -7,10 +7,7 @@ from pathlib import Path
 from typing import Any, NoReturn, TypeVar
 
 HERE = Path(__file__).resolve().parent
-
 THEME = HERE / 'theme'
-
-VENDOR_LIST = HERE / 'vendor.txt'
 
 WARNINGS: list[str] = []
 

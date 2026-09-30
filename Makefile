@@ -2,19 +2,10 @@
 all: example
 
 example:
-	@uv run lamina --root example build
+	@cd example && uv run lamina build
 
-check:
-	@uv run lamina --root example check
-
-serve:
-	@uv run lamina --root example serve
-
-vendor:
-	@uv run lamina vendor
-
-links:
-	@uv run lamina --root example links
+check serve links:
+	@cd example && uv run lamina $@
 
 lint:
 	@uv run mypy
@@ -23,4 +14,4 @@ lint:
 clean:
 	rm -rf example/public
 
-.PHONY: all example check serve vendor links lint clean
+.PHONY: all example check serve links lint clean

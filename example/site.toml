@@ -9,6 +9,12 @@ lang = "en"          # default language for categories that don't say
 glossary = "glossary" # slug of the page whose h2/h3 headings define [[terms]]
 toc_min = 3          # a category with toc = true gets a TOC from this many h2s
 
+[langs.zh]           # en is built in; every other language needs its UI strings
+name = "中文"
+updated = "更新"
+missing = "暂无{name}版"
+contents = "目录"
+
 [[category]]
 dir = "notes"
 title = "notes"

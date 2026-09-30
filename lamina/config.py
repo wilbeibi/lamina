@@ -26,12 +26,6 @@ class Lang(msgspec.Struct, forbid_unknown_fields=True):
     missing: str = 'no {name} version yet'
     contents: str = 'Contents'
 
-# a [langs.xx] table completes one of these, or defines a new language
-LANG_DEFAULTS: dict[str, dict[str, str]] = {
-    'en': {'name': 'EN'},
-    'zh': {'name': '中文', 'updated': '更新', 'missing': '暂无{name}版', 'contents': '目录'},
-}
-
 class Category(msgspec.Struct, forbid_unknown_fields=True):
     """One [[category]] table: a directory of pages with a list page."""
     dir: str
@@ -65,8 +59,9 @@ def load_site(root: Path) -> Site:
         die(f'no site config at {p}')
     raw = tomllib.loads(p.read_text(encoding='utf-8'))
     try:
-        user = msgspec.convert(raw.get('langs', {}), dict[str, dict[str, Any]])
-        raw['langs'] = {k: LANG_DEFAULTS.get(k, {'name': k.upper()}) | user.get(k, {}) for k in LANG_DEFAULTS | user}
+        # en is built in; any other language is a [langs.xx] table, named by its code unless it says
+        langs: dict[str, dict[str, Any]] = {'en': {}} | msgspec.convert(raw.get('langs', {}), dict[str, dict[str, Any]])
+        raw['langs'] = {k: {'name': k.upper()} | v for k, v in langs.items()}
         site = msgspec.convert(raw, Site)
     except msgspec.ValidationError as e:
         die(f'site.toml: {e}')

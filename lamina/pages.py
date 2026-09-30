@@ -3,9 +3,9 @@ import html
 import re
 import subprocess
 from collections.abc import Iterable, Iterator, Sequence
-from dataclasses import dataclass, field
 from pathlib import Path
 
+import msgspec
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
 from markdown_it.utils import EnvType
@@ -15,8 +15,7 @@ from .markdown import TAG, Heading, parser
 
 Preview = tuple[str, str]   # (title, first paragraph) behind a hover popup
 
-@dataclass(slots=True)
-class Page:
+class Page(msgspec.Struct):
     src: Path
     cat: Category
     date: str
@@ -29,17 +28,17 @@ class Page:
     title: str = ''
     description: str = ''
     html: str = ''
-    headings: list[Heading] = field(default_factory=list)
-    notes: list[tuple[str, str]] = field(default_factory=list)    # (id, html)
+    headings: list[Heading] = []
+    notes: list[tuple[str, str]] = []            # (id, html)
     mermaid: bool = False
     math: bool = False
-    pv: dict[str, Preview] = field(default_factory=dict)          # anchor -> preview
-    ids: set[str] = field(default_factory=set)
+    pv: dict[str, Preview] = {}                  # anchor -> preview
+    ids: set[str] = set()
     meta: str = ''
     atom_updated: str = ''
     pops: str = ''
     toc: str = ''
-    terms: dict[str, str] | None = None                           # glossary pages only
+    terms: dict[str, str] | None = None          # glossary pages only
 
 NAME_RE = re.compile(r'^(\d{4}-\d{2}-\d{2})-(.+)$')
 

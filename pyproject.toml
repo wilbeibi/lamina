@@ -22,3 +22,20 @@ lamina = "lamina:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["lamina"]
+
+[dependency-groups]
+dev = ["mypy>=1.14", "ruff>=0.8"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["lamina"]
+
+[tool.ruff.lint]
+extend-select = ["I", "UP"]
+# a page's date is the author's local day (DTZ011); fetch_link and cmd_watch
+# catch everything on purpose: any failure means no preview / keep watching
+ignore = ["DTZ011", "BLE001"]
+
+[tool.ruff.lint.isort]
+lines-after-imports = 1

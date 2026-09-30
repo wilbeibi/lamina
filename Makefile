@@ -16,7 +16,11 @@ vendor:
 links:
 	@uv run lamina --root example links
 
+lint:
+	@uv run mypy
+	@uv run ruff check
+
 clean:
 	rm -rf example/public
 
-.PHONY: all example check serve vendor links clean
+.PHONY: all example check serve vendor links lint clean

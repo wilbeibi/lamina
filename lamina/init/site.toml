@@ -1,0 +1,13 @@
+# lamina site config. Only [[category]] is required; the README lists the rest.
+# `url` is used for the Atom feed and absolute links.
+
+name = "{name}"
+description = ""
+url = ""
+author = ""
+lang = "en"
+
+[[category]]
+dir = "notes"
+title = "notes"
+description = ""

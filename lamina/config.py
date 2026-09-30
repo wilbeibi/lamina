@@ -1,10 +1,10 @@
-"""site.toml as dataclasses, and the warn/die channel every module reports through."""
+"""site.toml as msgspec structs, and the warn/die channel every module reports through."""
 import sys
 import tomllib
-from collections.abc import Mapping
-from dataclasses import dataclass, field, fields, replace
 from pathlib import Path
-from typing import Any, NoReturn, TypeVar
+from typing import Any, NoReturn
+
+import msgspec
 
 HERE = Path(__file__).resolve().parent
 THEME = HERE / 'theme'
@@ -19,35 +19,33 @@ def die(msg: str, code: int = 1) -> NoReturn:
     print(f'lamina: {msg}', file=sys.stderr)
     sys.exit(code)
 
-@dataclass(slots=True)
-class Lang:
+class Lang(msgspec.Struct, forbid_unknown_fields=True):
     """UI strings for one language (site.toml [langs.<code>])."""
     name: str
     updated: str = 'updated'
     missing: str = 'no {name} version yet'
     contents: str = 'Contents'
 
-LANG_DEFAULTS = {
-    'en': Lang(name='EN'),
-    'zh': Lang(name='中文', updated='更新', missing='暂无{name}版', contents='目录'),
+# a [langs.xx] table completes one of these, or defines a new language
+LANG_DEFAULTS: dict[str, dict[str, str]] = {
+    'en': {'name': 'EN'},
+    'zh': {'name': '中文', 'updated': '更新', 'missing': '暂无{name}版', 'contents': '目录'},
 }
 
-@dataclass(slots=True)
-class Category:
+class Category(msgspec.Struct, forbid_unknown_fields=True):
     """One [[category]] table: a directory of pages with a list page."""
     dir: str
-    title: str
+    title: str = ''                 # default: dir
     description: str = ''
-    lang: str = 'en'
-    translations: list[str] = field(default_factory=list)
-    index: str = 'index.html'
+    lang: str = ''                  # default: the site's
+    translations: list[str] = []
+    index: str = ''                 # default: index.html for the first category, else <dir>.html
     atom: bool = False
     math: bool = True
     toc: bool = False
-    glossary: str = ''
+    glossary: str | None = None     # default: the site's
 
-@dataclass(slots=True)
-class Site:
+class Site(msgspec.Struct, forbid_unknown_fields=True):
     """site.toml with every default filled in."""
     name: str = 'site'
     description: str = ''
@@ -58,40 +56,29 @@ class Site:
     glossary: str = ''
     toc_min: int = 3
     footer: str = ''
-    langs: dict[str, Lang] = field(default_factory=dict)
-    category: list[Category] = field(default_factory=list)
-
-Config = TypeVar('Config', Site, Category, Lang)
-
-def configure(obj: Config, cfg: Mapping[str, Any], where: str) -> Config:
-    """Set each key of a TOML table on its dataclass; die on a key it lacks."""
-    known = {f.name for f in fields(obj)}
-    for k, v in cfg.items():
-        if k not in known:
-            die(f'{where}: unknown key {k!r}')
-        setattr(obj, k, v)
-    return obj
+    langs: dict[str, Lang] = {}
+    category: list[Category] = []
 
 def load_site(root: Path) -> Site:
     p = root / 'site.toml'
     if not p.exists():
         die(f'no site config at {p}')
-    cfg = tomllib.loads(p.read_text(encoding='utf-8'))
-    site = configure(Site(), {k: v for k, v in cfg.items() if k not in ('category', 'langs')}, 'site.toml')
-    site.langs = {k: replace(v) for k, v in LANG_DEFAULTS.items()}
-    for k, v in cfg.get('langs', {}).items():
-        base = site.langs.get(k) or Lang(name=k.upper())
-        site.langs[k] = configure(base, v, f'[langs.{k}]')
-    for i, c in enumerate(cfg.get('category', [])):
-        if 'dir' not in c:
-            die('every [[category]] needs a dir')
-        cat = Category(dir=c['dir'], title=c['dir'], lang=site.lang, glossary=site.glossary,
-                       index='index.html' if i == 0 else f"{c['dir']}.html")
-        configure(cat, c, f"[[category]] {c['dir']}")
+    raw = tomllib.loads(p.read_text(encoding='utf-8'))
+    try:
+        user = msgspec.convert(raw.get('langs', {}), dict[str, dict[str, Any]])
+        raw['langs'] = {k: LANG_DEFAULTS.get(k, {'name': k.upper()}) | user.get(k, {}) for k in LANG_DEFAULTS | user}
+        site = msgspec.convert(raw, Site)
+    except msgspec.ValidationError as e:
+        die(f'site.toml: {e}')
+    if not site.category:
+        die('site.toml needs at least one [[category]]')
+    for i, cat in enumerate(site.category):
+        cat.title = cat.title or cat.dir
+        cat.lang = cat.lang or site.lang
+        cat.index = cat.index or ('index.html' if i == 0 else f'{cat.dir}.html')
+        if cat.glossary is None:
+            cat.glossary = site.glossary
         for lang in [cat.lang, *cat.translations]:
             if lang not in site.langs:
                 die(f'category {cat.dir}: unknown language {lang!r} (add [langs.{lang}] to site.toml)')
-        site.category.append(cat)
-    if not site.category:
-        die('site.toml needs at least one [[category]]')
     return site

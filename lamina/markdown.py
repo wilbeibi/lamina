@@ -1,9 +1,12 @@
 """The markdown-it parser: wikilinks, asides, footnotes, and math rendered to our markup."""
 import functools
 import html
+import re
 from collections.abc import Callable, Sequence
+from typing import NamedTuple
 
 from markdown_it import MarkdownIt
+from markdown_it.common.utils import escapeHtml
 from markdown_it.helpers import parseLinkLabel
 from markdown_it.renderer import RendererHTML
 from markdown_it.rules_inline import StateInline
@@ -12,6 +15,32 @@ from markdown_it.utils import EnvType, OptionsDict
 from mdit_py_plugins.dollarmath import dollarmath_plugin
 from mdit_py_plugins.footnote import footnote_plugin
 from mdit_py_plugins.tasklists import tasklists_plugin
+
+TAG = re.compile(r'<[^>]+>')
+
+class Heading(NamedTuple):
+    level: int
+    id: str
+    text: str
+
+def heading_open(s: RendererHTML, t: Sequence[Token], i: int, o: OptionsDict, e: EnvType) -> str:
+    """h2-h4 get an id: the heading text, whitespace -> '-', deduped; env['headings'] collects them."""
+    tag = t[i].tag
+    if tag not in ('h2', 'h3', 'h4'):
+        return s.renderToken(t, i, o, e)
+    text = TAG.sub('', s.renderInline(t[i + 1].children or [], o, e))
+    base = re.sub(r'\s+', '-', text.strip()) or 'section'
+    used = e.setdefault('heading_ids', {})
+    used[base] = n = used.get(base, 0) + 1
+    ident = base if n == 1 else f'{base}-{n}'
+    e.setdefault('headings', []).append(Heading(int(tag[1]), html.unescape(ident), html.unescape(text).strip()))
+    return f'<{tag} id="{ident.replace(chr(34), "&quot;")}">'
+
+def fence(s: RendererHTML, t: Sequence[Token], i: int, o: OptionsDict, e: EnvType) -> str:
+    """```mermaid -> <pre class="mermaid"> (rendered client-side); any other fence as usual."""
+    if t[i].info.split()[:1] != ['mermaid']:
+        return s.fence(t, i, o, e)
+    return f'<pre class="mermaid">{escapeHtml(t[i].content)}</pre>\n'
 
 # [[wiki links]] render to a placeholder tag: resolving them needs every page
 # parsed first, so decorate() rewrites <x-wikilink> once the site is known.
@@ -103,6 +132,11 @@ def parser(math: bool) -> MarkdownIt:
     md.add_render_rule('footnote_ref', footnote_ref)
     md.add_render_rule('footnote_open', lambda s, t, i, o, e: f'<li id="fn-{t[i].meta["id"] + 1}">')
     md.add_render_rule('footnote_anchor', footnote_anchor)
+    md.add_render_rule('heading_open', heading_open)
+    md.add_render_rule('fence', fence)
+    # GFM tables get the same scroll/breakout wrapper hand-written ones use
+    md.add_render_rule('table_open', lambda s, t, i, o, e: '<div class="t"><table>\n')
+    md.add_render_rule('table_close', lambda s, t, i, o, e: '</table></div>\n')
     if math:
         # no space inside the delimiters, no digit hugging them -- keeps
         # "$5-$10" and "raised $Y @ $Z" in prose out of math

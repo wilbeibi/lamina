@@ -5,19 +5,13 @@ import subprocess
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import NamedTuple
 
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
 from markdown_it.utils import EnvType
 
 from .config import Category, Site, die, warn
-from .markdown import parser
-
-class Heading(NamedTuple):
-    level: int
-    id: str
-    text: str
+from .markdown import TAG, Heading, parser
 
 Preview = tuple[str, str]   # (title, first paragraph) behind a hover popup
 
@@ -95,7 +89,6 @@ def discover(root: Path, site: Site) -> list[Page]:
             warn(f'{p.src.name}: translation without a {p.cat.lang} canonical page')
     return pages
 
-TAG = re.compile(r'<[^>]+>')
 FNREF = re.compile(r'<sup class="fn"[^>]*>.*?</sup>|<span class="aside">.*?</span>', re.DOTALL)
 
 def plain(h: str) -> str:
@@ -185,27 +178,8 @@ def render_body(p: Page, glossary: bool = False) -> None:
     tokens = md.parse(text, env)
     h: str = md.renderer.render(tokens, md.options, env)
     p.description = describe(md, tokens, env)
-
-    # heading ids: the heading text itself, whitespace -> '-', deduped.
-    used: dict[str, int] = {}
-    heads: list[Heading] = []
-
-    def hid(m: re.Match[str]) -> str:
-        lvl, inner = m.groups()
-        base = re.sub(r'\s+', '-', TAG.sub('', inner).strip()) or 'section'
-        used[base] = n = used.get(base, 0) + 1
-        ident = base if n == 1 else f'{base}-{n}'
-        heads.append(Heading(int(lvl), html.unescape(ident), html.unescape(TAG.sub('', inner)).strip()))
-        return f'<h{lvl} id="{ident.replace(chr(34), "&quot;")}">{inner}</h{lvl}>'
-    h = re.sub(r'<h([2-4])>(.*?)</h\1>', hid, h, flags=re.DOTALL)
-    p.headings = heads
-
-    # ```mermaid fences -> <pre class="mermaid"> (rendered client-side)
-    h = re.sub(r'<pre><code class="language-mermaid">(.*?)</code></pre>', r'<pre class="mermaid">\1</pre>', h, flags=re.DOTALL)
+    p.headings = env.get('headings', [])
     p.mermaid, p.math = '<pre class="mermaid">' in h, 'class="math"' in h
-
-    # GFM tables get the same scroll/breakout wrapper hand-written ones use
-    h = re.sub(r'<table>\n<thead>(.*?)</table>', r'<div class="t"><table>\n<thead>\1</table></div>', h, flags=re.DOTALL)
 
     # footnote bodies feed the hover popups (minus the back link)
     p.notes = [(n, re.sub(r' <a href="#fnref-[^"]*" class="fnback"[^<]*</a>', '', body))

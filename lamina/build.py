@@ -10,7 +10,8 @@ from .config import THEME, WARNINGS, Category, Site, die, load_site, warn
 from .links import read_links
 from .pages import Page, discover, is_glossary, render_body, stamps
 
-# pinned on purpose: a page that uses math or mermaid loads these from the CDN
+# pinned on purpose: a page that uses math or mermaid loads these from the CDN,
+# unless the site keeps its own copy in theme/ under the URL's file name
 MATHJAX_URL = 'https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js'
 MERMAID_URL = 'https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.min.js'
 
@@ -154,6 +155,11 @@ def theme_file(root: Path, name: str) -> Path | None:
             return base / name
     return None
 
+def lib_src(root: Path, url: str) -> str:
+    """Where a page loads mermaid or MathJax from: the site's theme/ copy, else the CDN."""
+    name = url.rsplit('/', 1)[1]
+    return f'/{name}' if (root / 'theme' / name).exists() else url
+
 def tpl(ctx: Ctx, name: str) -> str:
     f = theme_file(ctx.root, name)
     if f is None:
@@ -208,8 +214,8 @@ def page_html(p: Page, ctx: Ctx) -> str:
     site = ctx.site
     nav, alt = langnav(p, ctx)
     head = [alt, feed_link(ctx),
-            MATHJAX_CFG + f'\n<script defer src="{MATHJAX_URL}"></script>' if p.math else '',
-            f'<script defer src="{MERMAID_URL}"></script>' if p.mermaid else '',
+            MATHJAX_CFG + f'\n<script defer src="{lib_src(ctx.root, MATHJAX_URL)}"></script>' if p.math else '',
+            f'<script defer src="{lib_src(ctx.root, MERMAID_URL)}"></script>' if p.mermaid else '',
             '<script defer src="/lamina.js"></script>']
     footer = [f'<a href="{href_of(p.cat)}">← {html.escape(p.cat.title)}</a>',
               '<a href="/atom.xml">atom</a>' if ctx.feed else '', site.footer]
@@ -305,7 +311,7 @@ def build(root: Path) -> Path:
     if extra.exists():
         css += '\n/* site.css */\n' + extra.read_text(encoding='utf-8')
     (out / 'style.css').write_text(css, encoding='utf-8')
-    for name in ('lamina.js', 'favicon.svg'):
+    for name in ('lamina.js', 'favicon.svg', *(u.rsplit('/', 1)[1] for u in (MATHJAX_URL, MERMAID_URL))):
         if f := theme_file(root, name):
             shutil.copy(f, out / name)
     static = root / 'static'

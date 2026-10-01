@@ -121,6 +121,8 @@ Features that turn on when a page uses them:
 | `<ins datetime="2026-09-13" data-d="09-13">` | revision mark with a date badge |
 
 Mermaid and MathJax load from pinned jsDelivr URLs, only on pages that use them.
+To self-host, save those files as `theme/mermaid.min.js` and `theme/tex-svg.js`
+(the URLs are at the top of `lamina/build.py`); pages then load the site's copy.
 
 Outside links get a hover preview too. `lamina links` fetches each linked
 page's title and description into `links.json` at the site root; commit it,

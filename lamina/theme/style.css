@@ -167,9 +167,13 @@ ins[datetime] {
 	color: inherit;
 	font-size: inherit;
 	border-left: 3px solid var(--mark);
-	padding-left: .7rem;
-	margin-left: -.95rem;
+	padding-left: calc(.7rem + var(--pull, 0rem));
+	margin-left: calc(-.95rem - var(--pull, 0rem));
 }
+/* 列表项里：色条再外移一个列表缩进（--pull），与段落的色条对齐，不压序号/圆点 */
+ul, ol { padding-left: 2.5rem; }
+li > ins[datetime], li > p > ins[datetime] { --pull: 2.5rem; }
+li.task-list-item > ins[datetime] { --pull: 1.2rem; }
 ins[datetime]::before {
 	content: attr(data-d);
 	position: absolute;
@@ -185,7 +189,7 @@ ins[datetime]::before {
 :root { --mark: #c08a00; }
 @media (prefers-color-scheme: dark) { :root { --mark: #d9a437; } }
 @media (max-width: 56rem) {
-	ins[datetime] { margin-left: -.7rem; padding-left: .45rem; }
+	ins[datetime] { margin-left: calc(-.7rem - var(--pull, 0rem)); padding-left: calc(.45rem + var(--pull, 0rem)); }
 	ins[datetime]::before {
 		position: static;
 		display: inline-block;
@@ -198,6 +202,7 @@ ins[datetime]::before {
 td ins[datetime] {
 	display: inline;
 	border-left: none;
+	--pull: 0rem;
 	margin-left: 0;
 	padding-left: .35rem;
 	box-shadow: inset 3px 0 var(--mark);
@@ -391,3 +396,5 @@ figcaption { color: var(--muted); font-size: .85rem; margin-top: .4rem; }
 /* GFM task lists */
 li.task-list-item { list-style: none; margin-left: -1.3rem; }
 li.task-list-item input { margin-right: .4rem; }
+/* 块级 <ins> 会把复选框挤到单独一行：浮动让它留在首行 */
+li.task-list-item > input:has(+ ins[datetime]) { float: left; margin-top: .4em; }

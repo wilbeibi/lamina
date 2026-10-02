@@ -10,6 +10,13 @@
 No front matter: category = directory, date = filename prefix, language =
 filename suffix, title = the first `# ` line. Run commands in the site
 directory. SKILL.md in the repository is the reference.
+
+Math uses Temml (MathML); math and Mermaid load only where used. To self-host,
+put temml.min.js, Temml-Local.css, Temml.woff2 and mermaid.min.js in theme/.
+Unlinked images open in a zoom dialog. Missing local media warns at build time.
+Code blocks have Copy buttons on HTTPS or localhost; h2-h4 headings have permalinks.
+Tables sort complete numbers numerically and other values as text, ascending first.
+Sorting ignores annotations and accepts -$2 or $-2; math previews share page macros.
 """
 import argparse
 import functools
@@ -98,7 +105,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         if WARNINGS:
             die(f'{len(WARNINGS)} warnings')
 
-    command('build', 'build the site into public/; exit 1 on warnings (dead links, bad anchors, unresolved [[terms]])', strict)
+    command('build', 'build into public/; exit 1 on warnings (dead links, missing media, bad anchors, unresolved [[terms]])', strict)
     command('serve', f'build, serve public/ at http://127.0.0.1:{PORT}/ and rebuild on change, until Ctrl-C', lambda a: cmd_serve(root))
     command('links', 'fetch titles and descriptions of new external links into links.json for hover previews', lambda a: cmd_links(root))
     ap.set_defaults(run=strict)

@@ -1,5 +1,10 @@
 # lamina site config. Categories are directories under pages/; the first one is
 # the landing page. Everything else has a default.
+# Math uses Temml automatically; self-host with temml.min.js, Temml-Local.css
+# and Temml.woff2 in theme/.
+# Image zoom and local media checks are automatic.
+# Code copying, heading permalinks and table sorting need no settings.
+# Sorting ignores annotations; math previews use the page's global TeX macros.
 name = "lamina"
 description = "an example site showing every lamina feature"
 url = "https://lamina-demo.pages.dev" # the live build of this example site

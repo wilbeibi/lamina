@@ -2,6 +2,7 @@
 import functools
 import html
 import re
+import urllib.parse
 from collections.abc import Callable, Sequence
 from typing import NamedTuple
 
@@ -13,6 +14,7 @@ from markdown_it.rules_inline import StateInline
 from markdown_it.token import Token
 from markdown_it.utils import EnvType, OptionsDict
 from mdit_py_plugins.dollarmath import dollarmath_plugin
+from mdit_py_plugins.dollarmath.index import math_inline_dollar
 from mdit_py_plugins.footnote import footnote_plugin
 from mdit_py_plugins.tasklists import tasklists_plugin
 
@@ -30,11 +32,36 @@ def heading_open(s: RendererHTML, t: Sequence[Token], i: int, o: OptionsDict, e:
         return s.renderToken(t, i, o, e)
     text = TAG.sub('', s.renderInline(t[i + 1].children or [], o, e))
     base = re.sub(r'\s+', '-', text.strip()) or 'section'
-    used = e.setdefault('heading_ids', {})
-    used[base] = n = used.get(base, 0) + 1
-    ident = base if n == 1 else f'{base}-{n}'
+    used = e.setdefault('heading_ids', set())
+    ident, n = base, 1
+    while ident in used:
+        n += 1
+        ident = f'{base}-{n}'
+    used.add(ident)
+    t[i].attrSet('id', html.unescape(ident))
     e.setdefault('headings', []).append(Heading(int(tag[1]), html.unescape(ident), html.unescape(text).strip()))
     return f'<{tag} id="{ident.replace(chr(34), "&quot;")}">'
+
+def heading_close(s: RendererHTML, t: Sequence[Token], i: int, o: OptionsDict, e: EnvType) -> str:
+    ident = t[i - 2].attrGet('id')
+    link = (f' <a class="heading-link" href="#{urllib.parse.quote(str(ident))}" aria-label="Link to this section">#</a>'
+            if ident else '')
+    return link + s.renderToken(t, i, o, e)
+
+def math_without_code(md: MarkdownIt) -> None:
+    dollar = math_inline_dollar(allow_space=False, allow_digits=False, allow_double=True)
+
+    def rule(state: StateInline, silent: bool) -> bool:
+        start = state.pos
+        if not dollar(state, True):
+            return False
+        end, state.pos = state.pos, start
+        # A currency sign must not consume the dollar inside a later code span.
+        if '`' in state.src[start:end]:
+            return False
+        return dollar(state, silent)
+
+    md.inline.ruler.at('math_inline', rule)
 
 def fence(s: RendererHTML, t: Sequence[Token], i: int, o: OptionsDict, e: EnvType) -> str:
     """```mermaid -> <pre class="mermaid"> (rendered client-side); any other fence as usual."""
@@ -110,7 +137,7 @@ def footnote_anchor(s: RendererHTML, t: Sequence[Token], i: int, o: OptionsDict,
     return f' <a href="#fnref-{fn_id(t[i])}" class="fnback" aria-label="back">↩</a>'
 
 def tex(tag: str, o: str, c: str, tail: str = '') -> RenderRule:
-    """A render rule wrapping the token's TeX in MathJax delimiters."""
+    """A render rule wrapping the token's TeX in inline or display delimiters."""
     return lambda s, t, i, opts, env: f'<{tag} class="math">{o}{html.escape(t[i].content.strip())}{c}</{tag}>{tail}'
 
 @functools.cache
@@ -133,6 +160,7 @@ def parser() -> MarkdownIt:
     md.add_render_rule('footnote_open', lambda s, t, i, o, e: f'<li id="fn-{t[i].meta["id"] + 1}">')
     md.add_render_rule('footnote_anchor', footnote_anchor)
     md.add_render_rule('heading_open', heading_open)
+    md.add_render_rule('heading_close', heading_close)
     md.add_render_rule('fence', fence)
     # GFM tables get the same scroll/breakout wrapper hand-written ones use
     md.add_render_rule('table_open', lambda s, t, i, o, e: '<div class="t"><table>\n')
@@ -141,8 +169,9 @@ def parser() -> MarkdownIt:
     # "$5-$10" and "raised $Y @ $Z" in prose out of math
     md.use(dollarmath_plugin, double_inline=True,
            allow_space=False, allow_digits=False)
+    md.use(math_without_code)
 
-    # MathJax delimiters, emitted directly. Display blocks get their own
+    # TeX delimiters, emitted directly. Display blocks get their own
     # div (scrolls when wide); a labelled block stays inline in a <p> so
     # the label can follow it.
     display = tex('span', '\\[', '\\]')

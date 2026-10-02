@@ -7,11 +7,19 @@
 //   4. active-section marker for a long page's contents minimap
 //   5. mermaid bootstrap, theme-aware, re-renders when the OS theme flips
 //   6. window.lamina helpers for embedded animations
+//   7. image zoom, with keyboard access and native dialog focus handling
 (function () {
   'use strict';
   var doc = document, dark = matchMedia('(prefers-color-scheme: dark)');
   var lang = (doc.documentElement.lang || 'en').slice(0, 2);
   var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var macros = {};
+  function math(el) {
+    // Only the parser's TeX delimiters: dollar amounts stay prose.
+    if (window.temml) temml.renderMathInElement(el, { fences: '(', macros: macros });
+  }
+  math(doc.body);
 
   // ---- helpers for page scripts ------------------------------------------
   window.lamina = {
@@ -37,11 +45,11 @@
 
   // ---- 1. sortable tables ------------------------------------------------
   function num(s) {
-    s = s.trim().replace(/[,$%]/g, '');
-    var m = s.match(/^(-?\d+(?:\.\d+)?)\s*([KMB])?/i);
+    var m = s.trim().match(/^([+-]?\$?|\$[+-]?)((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)\s*([KMB]|%)?$/i);
     if (!m) return null;
-    var v = parseFloat(m[1]), suf = (m[2] || '').toUpperCase();
-    return v * (suf === 'K' ? 1e3 : suf === 'M' ? 1e6 : suf === 'B' ? 1e9 : 1);
+    var v = Number(m[1].replace('$', '') + m[2].replace(/,/g, '')), suf = (m[3] || '').toUpperCase();
+    v *= suf === 'K' ? 1e3 : suf === 'M' ? 1e6 : suf === 'B' ? 1e9 : 1;
+    return Number.isFinite(v) ? v : null;
   }
   doc.querySelectorAll('article table').forEach(function (table) {
     var head = table.rows[0];
@@ -52,20 +60,44 @@
       th.style.cursor = 'pointer';
       th.title = lang === 'zh' ? '点击排序' : 'click to sort';
       th.addEventListener('click', function () {
-        var dir = th.getAttribute('aria-sort') === 'descending' ? 1 : -1;
+        var dir = th.getAttribute('aria-sort') === 'ascending' ? -1 : 1;
         Array.prototype.forEach.call(head.cells, function (h) { h.removeAttribute('aria-sort'); });
         th.setAttribute('aria-sort', dir === 1 ? 'ascending' : 'descending');
         var rows = Array.prototype.slice.call(table.rows, 1).filter(function (r) { return r.parentNode !== table.tHead; });
-        rows.sort(function (a, b) {
-          var x = (a.cells[col] || {}).textContent || '', y = (b.cells[col] || {}).textContent || '';
-          var nx = num(x), ny = num(y);
+        var values = rows.map(function (row) {
+          var cell = row.cells[col] ? row.cells[col].cloneNode(true) : doc.createElement('td');
+          cell.querySelectorAll('sup.fn, .sn, .aside').forEach(function (note) { note.remove(); });
+          var text = cell.textContent || '';
+          return { row: row, text: text, number: num(text) };
+        });
+        values.sort(function (a, b) {
+          var nx = a.number, ny = b.number;
           if (nx !== null && ny !== null) return (nx - ny) * dir;
           if (nx !== null) return -1;
           if (ny !== null) return 1;
-          return x.localeCompare(y, lang) * dir;
+          return a.text.localeCompare(b.text, lang) * dir;
         });
-        rows.forEach(function (r) { body.appendChild(r); });
+        values.forEach(function (v) { body.appendChild(v.row); });
       });
+    });
+  });
+
+  if (navigator.clipboard && navigator.clipboard.writeText) doc.querySelectorAll('article pre > code').forEach(function (code) {
+    var pre = code.parentNode, wrap = doc.createElement('div'), button = doc.createElement('button');
+    wrap.className = 'code-block';
+    pre.before(wrap);
+    wrap.append(button, pre);
+    button.type = 'button';
+    button.className = 'copy-code';
+    var label = lang === 'zh' ? '复制' : 'Copy';
+    button.textContent = label;
+    button.setAttribute('aria-live', 'polite');
+    button.addEventListener('click', function () {
+      navigator.clipboard.writeText(code.textContent).then(function () {
+        button.textContent = lang === 'zh' ? '已复制' : 'Copied';
+      }, function () {
+        button.textContent = lang === 'zh' ? '复制失败' : 'Copy failed';
+      }).finally(function () { setTimeout(function () { button.textContent = label; }, 2000); });
     });
   });
 
@@ -89,6 +121,7 @@
     var p = box();
     p.innerHTML = '';
     p.appendChild(t.content.cloneNode(true));
+    math(p);
     p.style.display = 'block';
     anchor = a;
     var r = a.getBoundingClientRect(), w = p.offsetWidth, h = p.offsetHeight;
@@ -211,4 +244,50 @@
     draw();
     dark.addEventListener('change', draw);
   }
+  var zoom = null, zoomImage, zoomSize, zoomFrom;
+  var fullSize = lang === 'zh' ? '原始尺寸' : 'Full size', fitSize = lang === 'zh' ? '适应屏幕' : 'Fit';
+  function showImage(img) {
+    if (!img.naturalWidth) return;
+    if (!zoom) {
+      zoom = doc.createElement('dialog');
+      zoom.className = 'image-zoom';
+      var controls = doc.createElement('div');
+      controls.className = 'zoom-controls';
+      zoomSize = doc.createElement('button');
+      zoomSize.type = 'button';
+      zoomSize.addEventListener('click', function () {
+        zoomSize.textContent = zoom.classList.toggle('full-size') ? fitSize : fullSize;
+      });
+      var close = doc.createElement('button');
+      close.type = 'button';
+      close.textContent = lang === 'zh' ? '关闭' : 'Close';
+      close.addEventListener('click', function () { zoom.close(); });
+      zoomImage = doc.createElement('img');
+      controls.append(zoomSize, close);
+      zoom.append(controls, zoomImage);
+      zoom.addEventListener('click', function (e) { if (e.target === zoom) zoom.close(); });
+      zoom.addEventListener('close', function () { zoomFrom.focus({ preventScroll: true }); });
+      doc.body.appendChild(zoom);
+    }
+    zoomFrom = img;
+    zoom.classList.remove('full-size');
+    zoomSize.textContent = fullSize;
+    zoomImage.src = img.currentSrc || img.src;
+    zoomImage.alt = img.alt;
+    zoom.setAttribute('aria-label', img.alt || (lang === 'zh' ? '图片' : 'Image'));
+    zoom.showModal();
+    zoom.scrollTop = zoom.scrollLeft = 0;
+  }
+  if (window.HTMLDialogElement) doc.querySelectorAll('article img').forEach(function (img) {
+    if (img.closest('a, button, [role="button"]')) return;
+    img.classList.add('zoomable');
+    img.tabIndex = 0;
+    img.setAttribute('role', 'button');
+    img.setAttribute('aria-haspopup', 'dialog');
+    img.setAttribute('aria-label', (lang === 'zh' ? '放大图片' : 'Zoom image') + (img.alt ? ': ' + img.alt : ''));
+    img.addEventListener('click', function () { showImage(img); });
+    img.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showImage(img); }
+    });
+  });
 })();

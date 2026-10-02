@@ -81,6 +81,8 @@ translations = []        # e.g. ["en"] for pages/notes/*.en.md
 GitHub-flavored: tables, fenced code, strikethrough, footnotes, task lists,
 `<details>`, raw HTML. Links are checked at build time; a dead link, a bad
 `#anchor`, or an unresolved `[[term]]` is a warning.
+Missing local media also warns: `src` on images, audio, video, and `<source>`, plus video `poster`.
+Paths resolve against the built site, including page assets and `static/`; remote URLs and `srcset` are not checked.
 
 ```markdown
 # Title
@@ -100,7 +102,8 @@ up to the aside, and hovering those words highlights the aside;
 `[these words]^[~remark]` picks the words instead.
 
 Heading ids are the heading text with spaces as `-`, CJK kept, duplicates
-numbered. Encode a space in a URL as `%20`.
+numbered without collisions. Each h2–h4 has a `#` permalink; copy its link to cite that section.
+Encode a space in a URL as `%20`.
 
 A glossary page defines `[[terms]]` two ways: each h2/h3 heading, and each
 list item that opens with bold text, `- **Term**: definition`. An item gets an
@@ -113,16 +116,31 @@ Features that turn on when a page uses them:
 
 | Source | Result |
 |---|---|
-| pipe table | sortable, scrolls inside the column |
+| pipe table | click a header to sort ascending, then descending; scrolls inside the column |
+| fenced or indented code | Copy button on HTTPS or localhost |
+| image outside a link or button | click, Enter, or Space to enlarge; Escape, Close, or backdrop to dismiss |
 | ```` ```mermaid ```` | diagram rendered in the browser, source as fallback |
-| `$x$`, `$$…$$` | MathJax SVG; `$5` and `$5-$10` stay prose |
+| `$x$`, `$$…$$` | Temml MathML; `$5` and `$5-$10` stay prose |
 | `> [!NOTE]` / `[!IMPORTANT]` / `[!WARNING]` | callout |
 | `> [!ASIDE] text` | untitled remark in the right margin when wide, inline otherwise |
 | `<ins datetime="2026-09-13" data-d="09-13">` | revision mark with a date badge |
 
-Mermaid and MathJax load from pinned jsDelivr URLs, only on pages that use them.
-To self-host, save those files as `theme/mermaid.min.js` and `theme/tex-svg.js`
-(the URLs are at the top of `lamina/build.py`); pages then load the site's copy.
+Image zoom fits the screen initially. Choose Full size to inspect the original image and scroll across large figures.
+
+Table sorting recognizes complete numbers, optional signs, `$`, comma grouping, and a `K`/`M`/`B` or `%` suffix.
+Signs can precede or follow `$` (`-$2` or `$-2`). Footnotes and asides do not affect the sort value.
+Percentages sort by their displayed number. Numbers precede text in both directions; dates and mixed labels sort as text.
+Inline dollar math cannot cross a backtick; use display math for TeX containing literal backticks.
+
+Mermaid and Temml load from pinned jsDelivr URLs, only on pages that use them.
+Math uses local system fonts, supplemented by Temml's small font file.
+Page-defined global TeX macros also work in footnote previews.
+TeX stays visible without JavaScript.
+
+To self-host, save `mermaid.min.js`, `temml.min.js`, `Temml-Local.css`, and `Temml.woff2` in `theme/`.
+The URLs are at the top of `lamina/build.py`.
+The font sits beside the Temml CSS at the same URL prefix.
+Keep the CSS and font together; pages then load the site's copies.
 
 Outside links get a hover preview too. `lamina links` fetches each linked
 page's title and description into `links.json` at the site root; commit it,
@@ -159,5 +177,6 @@ System fonts, light and dark by OS setting. Put a file named `style.css`,
 `theme/site.css` is appended to the stylesheet instead of replacing it.
 Templates use `{{name}}` placeholders; read the built-in ones for the names.
 
-`lamina.js` only enhances: previews, table sorting, aside highlighting, the
-contents marker, and Mermaid. Without it every page is complete.
+`lamina.js` only enhances: previews, code copying, table sorting, aside highlighting, the
+contents marker, image zoom, math, and Mermaid. Without it every page is complete,
+with TeX and diagram source left visible.

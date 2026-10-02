@@ -1,9 +1,11 @@
 """The whole site: cross-page links and popups, templates, and writing public/."""
 import html
+import posixpath
 import re
 import shutil
 import urllib.parse
 from collections.abc import Iterable, Mapping
+from html.parser import HTMLParser
 from pathlib import Path
 
 from .config import THEME, WARNINGS, Category, Site, die, load_site, warn
@@ -12,7 +14,8 @@ from .pages import Page, discover, is_glossary, render_body, stamps
 
 # pinned on purpose: a page that uses math or mermaid loads these from the CDN,
 # unless the site keeps its own copy in theme/ under the URL's file name
-MATHJAX_URL = 'https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js'
+TEMML_URL = 'https://cdn.jsdelivr.net/npm/temml@0.13.5/dist/temml.min.js'
+TEMML_CSS_URL = 'https://cdn.jsdelivr.net/npm/temml@0.13.5/dist/Temml-Local.css'
 MERMAID_URL = 'https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.min.js'
 
 class Ctx:
@@ -59,6 +62,28 @@ def dead_asset(ctx: Ctx, href: str) -> bool:
         return False
     owners = [p for p in ctx.pages if p.slug == parts[0]]
     return bool(owners) and not any(p.assets.joinpath(*parts[1:]).exists() for p in owners)
+
+class MediaSources(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.urls: set[str] = set()
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in ('img', 'audio', 'video', 'source'):
+            self.urls.update(value for key, value in attrs if value and
+                             (key == 'src' or (tag == 'video' and key == 'poster')))
+
+def check_media(p: Page, out: Path) -> None:
+    """Check local media against the finished output, including static/ overrides."""
+    media = MediaSources()
+    media.feed(p.html)
+    for url in sorted(media.urls):
+        u = urllib.parse.urlsplit(url)
+        if u.scheme or u.netloc or not u.path:
+            continue
+        path = posixpath.normpath('/' + urllib.parse.unquote(u.path)).lstrip('/')
+        if not (out / path).is_file():
+            warn(f'{p.src.name}: dead media source {url}')
 
 def decorate(p: Page, ctx: Ctx) -> None:
     """Resolve the page's wikilinks, check its links, attach popups and the TOC."""
@@ -109,7 +134,7 @@ def decorate(p: Page, ctx: Ctx) -> None:
 
     def lk(m: re.Match[str]) -> str:
         a1, href, a3 = m.groups()
-        if 'data-pop' in a1 + a3:
+        if 'data-pop' in a1 + a3 or 'class="heading-link"' in a1 + a3:
             return m.group(0)
         url = html.unescape(href)
 
@@ -156,7 +181,7 @@ def theme_file(root: Path, name: str) -> Path | None:
     return None
 
 def lib_src(root: Path, url: str) -> str:
-    """Where a page loads mermaid or MathJax from: the site's theme/ copy, else the CDN."""
+    """Where a page loads a library asset from: the site's theme/ copy, else the CDN."""
     name = url.rsplit('/', 1)[1]
     return f'/{name}' if (root / 'theme' / name).exists() else url
 
@@ -176,10 +201,6 @@ def href_of(cat: Category) -> str:
 
 def newest(pages: Iterable[Page]) -> list[Page]:
     return sorted(pages, key=lambda p: (p.date, p.src.name), reverse=True)
-
-MATHJAX_CFG = ("<script>window.MathJax={tex:{inlineMath:[['\\\\(','\\\\)']],displayMath:[['\\\\[','\\\\]']],"
-               "processEscapes:false},svg:{fontCache:'global'},options:{skipHtmlTags:"
-               "['script','noscript','style','textarea','pre','code']}};</script>")
 
 def langnav(p: Page, ctx: Ctx) -> tuple[str, str]:
     """The page's category and language switcher, and its hreflang <link>s."""
@@ -214,7 +235,8 @@ def page_html(p: Page, ctx: Ctx) -> str:
     site = ctx.site
     nav, alt = langnav(p, ctx)
     head = [alt, feed_link(ctx),
-            MATHJAX_CFG + f'\n<script defer src="{lib_src(ctx.root, MATHJAX_URL)}"></script>' if p.math else '',
+            (f'<link rel="stylesheet" href="{lib_src(ctx.root, TEMML_CSS_URL)}">\n'
+             f'<script defer src="{lib_src(ctx.root, TEMML_URL)}"></script>') if p.math else '',
             f'<script defer src="{lib_src(ctx.root, MERMAID_URL)}"></script>' if p.mermaid else '',
             '<script defer src="/lamina.js"></script>']
     footer = [f'<a href="{href_of(p.cat)}">← {html.escape(p.cat.title)}</a>',
@@ -311,7 +333,8 @@ def build(root: Path) -> Path:
     if extra.exists():
         css += '\n/* site.css */\n' + extra.read_text(encoding='utf-8')
     (out / 'style.css').write_text(css, encoding='utf-8')
-    for name in ('lamina.js', 'favicon.svg', *(u.rsplit('/', 1)[1] for u in (MATHJAX_URL, MERMAID_URL))):
+    for name in ('lamina.js', 'favicon.svg', 'Temml.woff2',
+                 *(u.rsplit('/', 1)[1] for u in (TEMML_URL, TEMML_CSS_URL, MERMAID_URL))):
         if f := theme_file(root, name):
             shutil.copy(f, out / name)
     static = root / 'static'
@@ -320,6 +343,8 @@ def build(root: Path) -> Path:
             if f.relative_to(static).as_posix() in ctx.by_out or f.name in ctx.indexes:
                 warn(f'static/{f.relative_to(static)} shadows a generated page')
         shutil.copytree(static, out, dirs_exist_ok=True)
+    for p in pages:
+        check_media(p, out)
     print(f'lamina: built {len(pages)} pages + {len(site.category)} indexes -> {out}'
           + (f' ({len(WARNINGS)} warnings)' if WARNINGS else ''))
     return out

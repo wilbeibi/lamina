@@ -92,6 +92,11 @@ code, pre {
 code { padding: .1em .3em; border-radius: 3px; }
 pre { padding: .75rem; overflow-x: auto; border-radius: 3px; }
 pre code { background: none; padding: 0; }
+.code-block { position: relative; margin: 1rem 0; padding-top: 2.25rem; background: var(--code-bg); border-radius: 3px; }
+.code-block pre { margin: 0; }
+.copy-code { position: absolute; top: .4rem; right: .5rem; font: inherit; font-size: .75rem; color: var(--muted); background: var(--bg); border: 1px solid var(--rule); padding: .2rem .5rem; cursor: pointer; }
+.heading-link { font-size: .8em; font-weight: normal; color: var(--muted); text-decoration: none; }
+.heading-link:hover, .heading-link:focus-visible { color: var(--link); }
 
 blockquote {
 	border-left: 3px solid var(--rule);
@@ -145,13 +150,32 @@ tbody tr:hover td, table tr:hover td { background: var(--code-bg); }
 
 summary { cursor: pointer; color: var(--muted); }
 h1, h2, h3 { text-wrap: balance; }
-h2, h3 { scroll-margin-top: 1rem; }
-h2:target, h3:target { text-decoration: underline; text-underline-offset: .3em; }
+h2, h3, h4 { scroll-margin-top: 1rem; }
+h2:target, h3:target, h4:target { text-decoration: underline; text-underline-offset: .3em; }
 li.term { scroll-margin-top: 1rem; }
 li.term:target { background: var(--code-bg); box-shadow: 0 0 0 .3rem var(--code-bg); }
 
 hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
 img { max-width: 100%; }
+img.zoomable { cursor: zoom-in; }
+img.zoomable:focus-visible { outline: 2px solid var(--link); outline-offset: 4px; }
+dialog.image-zoom {
+	background: var(--bg); color: var(--fg); border: 1px solid var(--rule);
+	padding: 1rem; max-width: calc(100vw - 4rem); max-height: calc(100dvh - 4rem);
+}
+dialog.image-zoom::backdrop { background: rgb(0 0 0 / .75); }
+dialog.image-zoom img { display: block; width: auto; height: auto; max-height: calc(100dvh - 8rem); margin: auto; }
+dialog.image-zoom.full-size { width: calc(100vw - 4rem); }
+dialog.image-zoom.full-size img { max-width: none; max-height: none; }
+.zoom-controls {
+	display: flex; justify-content: flex-end; gap: .5rem; padding-bottom: .75rem;
+	position: sticky; top: 0; left: 0; background: var(--bg);
+}
+dialog.image-zoom button {
+	padding: .5rem .75rem;
+	font: inherit; color: var(--fg); background: var(--code-bg); border: 1px solid var(--rule); cursor: pointer;
+}
+html:has(dialog.image-zoom[open]) { overflow: hidden; }
 
 /* Corrections: struck text stays readable as history; the inline fix is muted,
    not underlined (underline reads as a link). */
@@ -378,9 +402,8 @@ pre.mermaid { background: none; padding: 0; text-align: center; color: var(--mut
 pre.mermaid[data-processed] { color: inherit; font-size: inherit; }
 pre.mermaid svg { max-width: 100%; height: auto; }
 
-/* Math (MathJax, tex-svg). Display blocks scroll instead of overflowing. */
+/* MathML via Temml. Display blocks scroll instead of overflowing. */
 div.math { overflow-x: auto; margin: 1rem 0; }
-mjx-container[display="true"] { margin: .5rem 0 !important; }
 
 /* Embedded animations / custom blocks: <div class="viz"> is a plain container;
    canvas + svg scale to the column. --s1..--s8 is a light/dark-aware palette

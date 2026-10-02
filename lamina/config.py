@@ -25,6 +25,7 @@ class Lang(msgspec.Struct, forbid_unknown_fields=True):
     updated: str = 'updated'
     missing: str = 'no {name} version yet'
     contents: str = 'Contents'
+    pinned: str = 'Pinned'
 
 class Category(msgspec.Struct, forbid_unknown_fields=True):
     """One [[category]] table: a directory of pages with a list page."""
@@ -33,6 +34,7 @@ class Category(msgspec.Struct, forbid_unknown_fields=True):
     description: str = ''
     lang: str = 'en'
     translations: list[str] = []
+    pinned: list[str] = []          # canonical slugs, in display order
     index: str = ''                 # set by load_site: index.html for the first category, else <dir>.html
 
 class Site(msgspec.Struct, forbid_unknown_fields=True):

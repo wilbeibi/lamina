@@ -10,6 +10,8 @@
 No front matter: category = directory, date = filename prefix, language =
 filename suffix, title = the first `# ` line. Run commands in the site
 directory. SKILL.md in the repository is the reference.
+Set pinned = ["slug", ...] in a site.toml category to pin notes in that order.
+Pinned notes show 📌 before their titles. The Atom feed stays chronological.
 
 Math uses Temml (MathML); math and Mermaid load only where used. To self-host,
 put temml.min.js, Temml-Local.css, Temml.woff2 and mermaid.min.js in theme/.

@@ -15,11 +15,13 @@ name = "中文"
 updated = "更新"
 missing = "暂无{name}版"
 contents = "目录"
+pinned = "置顶"
 
 [[category]]
 dir = "notes"
 title = "notes"
 description = "notes, plans, and things being figured out"
+pinned = ["glossary"] # slugs in display order; remaining notes stay newest first
 
 [[category]]
 dir = "reports"

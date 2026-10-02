@@ -250,9 +250,13 @@ def page_html(p: Page, ctx: Ctx) -> str:
 
 def index_html(cat: Category, ctx: Ctx) -> str:
     site = ctx.site
-    items = newest(p for p in ctx.pages if p.cat is cat and p.canonical)
+    pages = {p.slug: p for p in ctx.pages if p.cat is cat and p.canonical}
+    items = [pages[slug] for slug in cat.pinned]
+    items += newest(p for slug, p in pages.items() if slug not in cat.pinned)
+    pin = f'<span role="img" aria-label="{html.escape(site.langs[cat.lang].pinned, quote=True)}">📌</span> '
     item_t = tpl(ctx, 'index-item.html')
     lis = ''.join(render(item_t, {'date': p.date, 'href': p.out, 'title': html.escape(p.title),
+                                  'pin': pin if p.slug in cat.pinned else '',
                                   'description': html.escape(p.description, quote=True)}) for p in items)
     sec = [f'<strong>{html.escape(c.title)}</strong>' if c is cat else f'<a href="{href_of(c)}">{html.escape(c.title)}</a>'
            for c in site.category]

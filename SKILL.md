@@ -67,6 +67,7 @@ name = "中文"
 updated = "更新"
 missing = "暂无{name}版"
 contents = "目录"         # TOC heading
+pinned = "置顶"           # accessible pin label; English default: Pinned
 
 [[category]]
 dir = "notes"            # pages/notes/
@@ -74,7 +75,14 @@ title = "notes"          # default: dir
 description = ""
 lang = "en"              # language of the canonical pages
 translations = []        # e.g. ["en"] for pages/notes/*.en.md
+pinned = []              # e.g. ["glossary", "second-note"], canonical slugs in display order
 ```
+
+Pinned pages appear first in their category's list, with 📌 before each title.
+The remaining pages appear newest first, without duplicates. The Atom feed stays chronological.
+Omit `pinned` or use `[]` for the usual date order.
+Duplicate slugs or slugs without a published canonical page in that category fail the build.
+Custom `theme/index-item.html` templates use `{{pin}}` to display the marker.
 
 ## Markdown
 

@@ -86,6 +86,14 @@ def discover(root: Path, site: Site) -> list[Page]:
     for p in pages:
         if not p.canonical and (p.cat.dir, p.slug) not in canon:
             warn(f'{p.src.name}: translation without a {p.cat.lang} canonical page')
+    for cat in site.category:
+        pinned: set[str] = set()
+        for slug in cat.pinned:
+            if slug in pinned:
+                die(f'category {cat.dir}: duplicate pinned slug {slug!r}; remove the duplicate in site.toml')
+            if (cat.dir, slug) not in canon:
+                die(f'category {cat.dir}: pinned slug {slug!r} has no canonical page; fix pinned in site.toml')
+            pinned.add(slug)
     return pages
 
 FNREF = re.compile(r'<sup class="fn"[^>]*>.*?</sup>|<span class="aside">.*?</span>', re.DOTALL)

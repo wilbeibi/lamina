@@ -7,7 +7,7 @@ build-backend = "hatchling.build"
 # machine. Publishing to PyPI will need a different one: `lamina` there is an
 # unrelated Pygame/OpenGL project.
 name = "lamina"
-version = "0.3.0"
+version = "0.4.0"
 description = "Publish long-form Markdown as a plain static site"
 readme = "README.md"
 requires-python = ">=3.11"

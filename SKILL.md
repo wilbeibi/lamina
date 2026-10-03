@@ -7,8 +7,8 @@ description: Write and publish pages on a lamina site, a Markdown directory with
 
 Lamina publishes a directory of Markdown as plain HTML: notes, research
 reports, small documentation sites. No front matter: the filesystem carries the
-metadata. It deliberately has no search, tags, comments, pagination, syntax
-highlighting, plugins, options, or deployment.
+metadata. It deliberately has no search, tags, comments, pagination,
+plugins, options, or deployment.
 
 Three commands, run in the site directory, non-interactive, warnings to
 stderr as `lamina: ...`:
@@ -104,6 +104,8 @@ First paragraph: the description.
 [^1]: Footnotes show as sidenotes on wide screens and popups elsewhere.
 ```
 
+Table footnotes use popups at every width. Click a footnote reference to show its endnote.
+
 `^[~remark]` is an aside: an unnumbered inline note beside its words, in the
 margin when wide, with no popup or endnote. Hovering it highlights its sentence
 up to the aside, and hovering those words highlights the aside;
@@ -125,7 +127,8 @@ Features that turn on when a page uses them:
 | Source | Result |
 |---|---|
 | pipe table | click a header to sort ascending, then descending; scrolls inside the column |
-| fenced or indented code | Copy button on HTTPS or localhost |
+| fenced or indented code | subtle Copy text in the top-right corner on HTTPS or localhost |
+| language-labelled code fence | syntax highlighting with bundled Prism |
 | image outside a link or button | click, Enter, or Space to enlarge; Escape, Close, or backdrop to dismiss |
 | ```` ```mermaid ```` | diagram rendered in the browser, source as fallback |
 | `$x$`, `$$…$$` | Temml MathML; `$5` and `$5-$10` stay prose |
@@ -134,6 +137,14 @@ Features that turn on when a page uses them:
 | `<ins datetime="2026-09-13" data-d="09-13">` | revision mark with a date badge |
 
 Image zoom fits the screen initially. Choose Full size to inspect the original image and scroll across large figures.
+
+The Copy text briefly changes to Copied after copying.
+
+Label code fences with `python`, `bash` (`sh`, `shell`), `javascript` (`js`),
+`typescript` (`ts`), `markup` (`html`, `xml`, `svg`), `css`, `json`, `yaml` (`yml`),
+`sql`, `go`, or `rust`. Prism is bundled locally, with light/dark colors and no plugins or language downloads.
+Unlabelled or unsupported languages stay plain; without JavaScript, all code stays readable.
+Mermaid fences still render as diagrams.
 
 Table sorting recognizes complete numbers, optional signs, `$`, comma grouping, and a `K`/`M`/`B` or `%` suffix.
 Signs can precede or follow `$` (`-$2` or `$-2`). Footnotes and asides do not affect the sort value.
@@ -180,11 +191,11 @@ two on one paragraph.
 ## Theme
 
 System fonts, light and dark by OS setting. Put a file named `style.css`,
-`lamina.js`, `favicon.svg`, `page.html`, `index.html`, `index-item.html`,
+`lamina.js`, `prism.js`, `favicon.svg`, `page.html`, `index.html`, `index-item.html`,
 `atom.xml`, or `atom-item.xml` in `theme/` to replace the built-in one;
 `theme/site.css` is appended to the stylesheet instead of replacing it.
 Templates use `{{name}}` placeholders; read the built-in ones for the names.
 
-`lamina.js` only enhances: previews, code copying, table sorting, aside highlighting, the
+`lamina.js` only enhances: previews, code highlighting and copying, table sorting, aside highlighting, the
 contents marker, image zoom, math, and Mermaid. Without it every page is complete,
 with TeX and diagram source left visible.

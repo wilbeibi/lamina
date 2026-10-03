@@ -238,6 +238,7 @@ def page_html(p: Page, ctx: Ctx) -> str:
             (f'<link rel="stylesheet" href="{lib_src(ctx.root, TEMML_CSS_URL)}">\n'
              f'<script defer src="{lib_src(ctx.root, TEMML_URL)}"></script>') if p.math else '',
             f'<script defer src="{lib_src(ctx.root, MERMAID_URL)}"></script>' if p.mermaid else '',
+            '<script defer src="/prism.js" data-manual></script>' if '<code class="language-' in p.html else '',
             '<script defer src="/lamina.js"></script>']
     footer = [f'<a href="{href_of(p.cat)}">← {html.escape(p.cat.title)}</a>',
               '<a href="/atom.xml">atom</a>' if ctx.feed else '', site.footer]
@@ -337,7 +338,7 @@ def build(root: Path) -> Path:
     if extra.exists():
         css += '\n/* site.css */\n' + extra.read_text(encoding='utf-8')
     (out / 'style.css').write_text(css, encoding='utf-8')
-    for name in ('lamina.js', 'favicon.svg', 'Temml.woff2',
+    for name in ('lamina.js', 'prism.js', 'favicon.svg', 'Temml.woff2',
                  *(u.rsplit('/', 1)[1] for u in (TEMML_URL, TEMML_CSS_URL, MERMAID_URL))):
         if f := theme_file(root, name):
             shutil.copy(f, out / name)

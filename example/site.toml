@@ -4,6 +4,9 @@
 # and Temml.woff2 in theme/.
 # Image zoom and local media checks are automatic.
 # Code copying, heading permalinks and table sorting need no settings.
+# Labelled code fences use local Prism highlighting; unknown languages stay plain.
+# Subtle Copy text sits in each code block's top-right corner and briefly shows Copied.
+# Table footnotes use popups at every width; clicking a reference shows its endnote.
 # Sorting ignores annotations; math previews use the page's global TeX macros.
 name = "lamina"
 description = "an example site showing every lamina feature"

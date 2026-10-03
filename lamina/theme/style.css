@@ -5,6 +5,10 @@
 	--link: #05a;
 	--rule: #ddd;
 	--code-bg: #f4f4f4;
+	--code-comment: #626970;
+	--code-keyword: #8250a0;
+	--code-string: #24663b;
+	--code-number: #945018;
 	--note: #687782;
 	--note-bg: #f5f7f8;
 	--important: #176b87;
@@ -22,6 +26,10 @@
 		--link: #7ab7ff;
 		--rule: #333;
 		--code-bg: #1e1e1e;
+		--code-comment: #a0a7ae;
+		--code-keyword: #c9a0dc;
+		--code-string: #9dc79d;
+		--code-number: #e0b080;
 		--note: #9aa6ad;
 		--note-bg: #1a2023;
 		--important: #69b9d2;
@@ -92,9 +100,21 @@ code, pre {
 code { padding: .1em .3em; border-radius: 3px; }
 pre { padding: .75rem; overflow-x: auto; border-radius: 3px; }
 pre code { background: none; padding: 0; }
-.code-block { position: relative; margin: 1rem 0; padding-top: 2.25rem; background: var(--code-bg); border-radius: 3px; }
-.code-block pre { margin: 0; }
-.copy-code { position: absolute; top: .4rem; right: .5rem; font: inherit; font-size: .75rem; color: var(--muted); background: var(--bg); border: 1px solid var(--rule); padding: .2rem .5rem; cursor: pointer; }
+pre code .token:is(.comment, .prolog, .doctype, .cdata) { color: var(--code-comment); }
+pre code .token:is(.keyword, .atrule, .selector) { color: var(--code-keyword); }
+pre code .token:is(.string, .char, .attr-value, .regex) { color: var(--code-string); }
+pre code .token:is(.number, .boolean, .constant) { color: var(--code-number); }
+pre code .token:is(.function, .class-name, .tag, .attr-name, .property, .builtin) { color: var(--link); }
+.code-block { position: relative; margin: 1rem 0; }
+.code-block pre { margin: 0; padding-right: 5rem; }
+.copy-code {
+	position: absolute; top: .375rem; right: .5rem; min-height: 2rem; padding: 0 .25rem;
+	font: inherit; font-size: .75rem; color: var(--muted); opacity: .7;
+	background: none; border: 0; cursor: pointer;
+}
+.copy-code:hover, .copy-code:focus-visible { opacity: 1; }
+.copy-code:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+@media (pointer: coarse) { .copy-code { min-height: 2.5rem; top: .125rem; } }
 .heading-link { font-size: .8em; font-weight: normal; color: var(--muted); text-decoration: none; }
 .heading-link:hover, .heading-link:focus-visible { color: var(--link); }
 
@@ -341,6 +361,8 @@ sup.fn a:target { outline: 1px solid var(--link); }
 }
 /* A table scrolls sideways, so an aside floated out of a cell would be cut
    off at the table's edge: in a cell it stays in the line at every width. */
+td .sn, th .sn { display: none; }
+.footnotes:has(:target) { display: block; }
 td .aside, th .aside {
 	display: inline; float: none; width: auto; margin: 0 0 0 .3em;
 	background: var(--note-bg); padding: .05em .35em; font-size: .875em; line-height: inherit;

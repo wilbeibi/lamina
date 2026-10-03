@@ -82,6 +82,11 @@
     });
   });
 
+  if (window.Prism) doc.querySelectorAll('article pre > code').forEach(function (code) {
+    var language = Prism.util.getLanguage(code);
+    if (Prism.languages[language]) Prism.highlightElement(code);
+  });
+
   if (navigator.clipboard && navigator.clipboard.writeText) doc.querySelectorAll('article pre > code').forEach(function (code) {
     var pre = code.parentNode, wrap = doc.createElement('div'), button = doc.createElement('button');
     wrap.className = 'code-block';
@@ -89,15 +94,18 @@
     wrap.append(button, pre);
     button.type = 'button';
     button.className = 'copy-code';
-    var label = lang === 'zh' ? '复制' : 'Copy';
+    var label = lang === 'zh' ? '复制' : 'Copy', reset;
     button.textContent = label;
     button.setAttribute('aria-live', 'polite');
     button.addEventListener('click', function () {
+      clearTimeout(reset);
       navigator.clipboard.writeText(code.textContent).then(function () {
         button.textContent = lang === 'zh' ? '已复制' : 'Copied';
       }, function () {
         button.textContent = lang === 'zh' ? '复制失败' : 'Copy failed';
-      }).finally(function () { setTimeout(function () { button.textContent = label; }, 2000); });
+      }).finally(function () {
+        reset = setTimeout(function () { button.textContent = label; }, 2000);
+      });
     });
   });
 

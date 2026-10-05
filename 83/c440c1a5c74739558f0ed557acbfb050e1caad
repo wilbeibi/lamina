@@ -1,0 +1,23 @@
+SKILL.md
+  s_3fc2fd01c941db::t_0aafb8fdb549c6 145
+lamina/cli.py
+  s_3fc2fd01c941db::t_eae903002b275c 22
+lamina/theme/prism.js
+  s_3fc2fd01c941db::t_a5338fc8f6c396 2,41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "83c440c1a5c74739558f0ed557acbfb050e1caad",
+  "prompts": {},
+  "sessions": {
+    "s_3fc2fd01c941db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fcbfee11-d6be-46fe-916b-2aec0f5ee683",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Hongyi Shen <wilbeibi@gmail.com>"
+    }
+  }
+}

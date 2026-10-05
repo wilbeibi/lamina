@@ -19,7 +19,7 @@ Unlinked images open in a zoom dialog. Missing local media warns at build time.
 On HTTPS or localhost, code blocks have subtle Copy text in the top-right corner.
 Copying briefly shows Copied. Headings h2-h4 have permalinks.
 Labelled code fences use bundled Prism: Python, Bash, JS/TS, HTML/XML, CSS,
-JSON, YAML, SQL, Go and Rust. Unknown languages stay plain; no CDN or settings.
+JSON, YAML, SQL, Go, Rust and TOML. Unknown languages stay plain; no CDN or settings.
 Table footnotes use popups at every width. Click a reference to show its endnote.
 Tables sort complete numbers numerically and other values as text, ascending first.
 Sorting ignores annotations and accepts -$2 or $-2; math previews share page macros.

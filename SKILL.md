@@ -142,7 +142,7 @@ The Copy text briefly changes to Copied after copying.
 
 Label code fences with `python`, `bash` (`sh`, `shell`), `javascript` (`js`),
 `typescript` (`ts`), `markup` (`html`, `xml`, `svg`), `css`, `json`, `yaml` (`yml`),
-`sql`, `go`, or `rust`. Prism is bundled locally, with light/dark colors and no plugins or language downloads.
+`sql`, `go`, `rust`, or `toml`. Prism is bundled locally, with light/dark colors and no plugins or language downloads.
 Unlabelled or unsupported languages stay plain; without JavaScript, all code stays readable.
 Mermaid fences still render as diagrams.
 

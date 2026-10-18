@@ -5,7 +5,7 @@ example serve links:
 	@cd example && uv run lamina $(subst example,,$@)
 
 lint:
-	@uv run mypy
+	@uv run ty check lamina
 	@uv run ruff check
 
 clean:

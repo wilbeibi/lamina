@@ -18,11 +18,12 @@ wrangler pages deploy example/public --project-name lamina-demo --branch main \
   removing an option to adding one. A dependency must be small, high quality,
   and replace real code (msgspec, markdown-it); the stdlib otherwise.
 - Hand-formatted: single quotes, one blank line between definitions, no banner
-  comments, no formatter. `make lint` runs mypy --strict and ruff.
-- No tests. `make check` builds `example/`; a refactor must leave
+  comments, no formatter. `make lint` runs ty and ruff
+  (ANN stands in for the annotations mypy --strict required).
+- No tests. `make` builds `example/`; a refactor must leave
   `example/public` byte-identical, and a feature change reports its diff.
 - SKILL.md is the user-facing reference and the skill for their agents. Update
-  it, `lamina --help` and `lamina/init/site.toml` with every user-visible change.
+  it, `lamina --help` and `example/site.toml` with every user-visible change.
 
 ## Writing pages
 

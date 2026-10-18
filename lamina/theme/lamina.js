@@ -241,7 +241,7 @@
   }
 
   // ---- 5. mermaid --------------------------------------------------------
-  if (window.pele) doc.querySelectorAll('pre.mermaid').forEach(function (el) { pele.mount(el, el.textContent); });
+  if (window.pele) doc.querySelectorAll('pre.mermaid').forEach(function (el) { pele.mount(el, el.textContent, { zoom: false }); });
   var zoom = null, zoomImage, zoomSize, zoomFrom;
   var fullSize = lang === 'zh' ? '原始尺寸' : 'Full size', fitSize = lang === 'zh' ? '适应屏幕' : 'Fit';
   function showImage(img) {

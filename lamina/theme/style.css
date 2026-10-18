@@ -419,16 +419,13 @@ td .aside, th .aside {
 	}
 }
 
-/* Mermaid via pele: source stays visible (and readable) until rendered / without JS.
+/* Mermaid via pele: the source shows until rendered / without JS.
    pele measures labels in the pre's font and reads its colors from these variables. */
 pre.mermaid {
-	background: none; padding: 0; text-align: center; color: var(--muted); font-family: inherit; font-size: .8rem;
+	background: none; padding: 0; text-align: center; font-family: inherit;
 	--pele-bg: var(--bg); --pele-fg: var(--fg); --pele-muted: var(--muted); --pele-line: var(--fg);
 	--pele-surface: var(--code-bg); --pele-surface-alt: var(--rule); --pele-border: var(--muted); --pele-accent: var(--link);
 }
-pre.mermaid:has(> .pele) { color: inherit; font-size: inherit; }
-/* A diagram shrunk to fit gets zoom buttons: give them a gutter, not the last box. */
-pre.mermaid:has(> .pele-zoom) { padding-right: 38px; --pele-zoom-right: 0; }
 
 /* MathML via Temml. Display blocks scroll instead of overflowing. */
 div.math { overflow-x: auto; margin: 1rem 0; }

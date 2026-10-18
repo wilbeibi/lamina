@@ -9,7 +9,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 from .config import THEME, WARNINGS, Category, Site, die, load_site, warn
-from .links import read_links
+from .links import LINKS_FILE, read_links
 from .pages import Page, discover, is_glossary, render_body, stamps
 
 # pinned on purpose: a page that uses math or mermaid loads these from the CDN,
@@ -350,6 +350,9 @@ def build(root: Path) -> Path:
         shutil.copytree(static, out, dirs_exist_ok=True)
     for p in pages:
         check_media(p, out)
+    # a site with links.json wants previews: name the links `lamina links` has not tried yet
+    if (root / LINKS_FILE).exists() and (new := len(ctx.external - ctx.links.keys())):
+        print(f'lamina: {new} new outside link{"s" * (new > 1)} without a preview; run lamina links')
     print(f'lamina: built {len(pages)} pages + {len(site.category)} indexes -> {out}'
           + (f' ({len(WARNINGS)} warnings)' if WARNINGS else ''))
     return out

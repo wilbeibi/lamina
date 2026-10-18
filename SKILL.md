@@ -163,9 +163,10 @@ Keep the CSS and font together; pages then load the site's copies.
 
 Outside links get a hover preview too. `lamina links` fetches each linked
 page's title and description into `links.json` at the site root; commit it,
-and rerun after adding links. Only new links are fetched; delete `links.json`
-to refetch everything. The build only reads that file, so it never touches the
-network. A link title, `[text](https://… "one line")`, replaces the fetched
+and rerun after adding links; the build says when it sees links not fetched
+yet. Only new links and ones that were unavailable are fetched; delete
+`links.json` to refetch everything. The build only reads that file, so it never
+touches the network. A link title, `[text](https://… "one line")`, replaces the fetched
 description; private pages, PDFs, and sites that block the fetch get a popup
 only if they have one.
 

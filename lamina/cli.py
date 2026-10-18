@@ -75,23 +75,25 @@ def cmd_serve(root: Path) -> None:
 def cmd_links(root: Path) -> None:
     site = load_site(root)
     ctx = load(root, site)
-    # entries for links no page has any more are dropped; a failed fetch keeps the old one.
-    # Only new links are fetched: delete links.json to refetch everything.
+    # entries for links no page has any more are dropped; a failed fetch keeps the old one,
+    # or records {} so the build knows it was tried. Only new and unavailable links are
+    # fetched: delete links.json to refetch everything.
     cache = {u: v for u, v in ctx.links.items() if u in ctx.external}
-    todo = sorted(ctx.external - cache.keys())
+    todo = sorted(u for u in ctx.external if not cache.get(u))
     print(f'lamina: {len(ctx.external)} external links, fetching {len(todo)}')
     miss = []
     with ThreadPoolExecutor(8) as ex:
         for url, got in zip(todo, ex.map(fetch_link, todo), strict=True):
             if got:
                 cache[url] = got
-            elif url not in cache:
+            elif not cache.get(url):
+                cache[url] = {}
                 miss.append(url)
     for url in miss:
         print(f'lamina: no preview for {url}', file=sys.stderr)
     (root / LINKS_FILE).write_text(json.dumps(dict(sorted(cache.items())), ensure_ascii=False, indent=1) + '\n',
                                    encoding='utf-8')
-    print(f'lamina: {len(cache)} previews in {root / LINKS_FILE} ({len(miss)} unavailable)')
+    print(f'lamina: {sum(map(bool, cache.values()))} previews in {root / LINKS_FILE} ({len(miss)} unavailable)')
 
 Command = Callable[[argparse.Namespace], object]
 
@@ -113,7 +115,7 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     command('build', 'build into public/; exit 1 on warnings (dead links, missing media, bad anchors, unresolved [[terms]])', strict)
     command('serve', f'build, serve public/ at http://127.0.0.1:{PORT}/ and rebuild on change, until Ctrl-C', lambda a: cmd_serve(root))
-    command('links', 'fetch titles and descriptions of new external links into links.json for hover previews', lambda a: cmd_links(root))
+    command('links', 'fetch titles and descriptions of new and unavailable external links into links.json for hover previews', lambda a: cmd_links(root))
     ap.set_defaults(run=strict)
     a = ap.parse_args(argv)
     a.run(a)

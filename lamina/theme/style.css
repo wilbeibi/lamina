@@ -427,6 +427,8 @@ pre.mermaid {
 	--pele-surface: var(--code-bg); --pele-surface-alt: var(--rule); --pele-border: var(--muted); --pele-accent: var(--link);
 }
 pre.mermaid:has(> .pele) { color: inherit; font-size: inherit; }
+/* A diagram shrunk to fit gets zoom buttons: give them a gutter, not the last box. */
+pre.mermaid:has(> .pele-zoom) { padding-right: 38px; --pele-zoom-right: 0; }
 
 /* MathML via Temml. Display blocks scroll instead of overflowing. */
 div.math { overflow-x: auto; margin: 1rem 0; }

@@ -14,8 +14,8 @@ from .pages import Page, discover, is_glossary, render_body, stamps
 
 # pinned on purpose: a page that uses math or mermaid loads these from the CDN,
 # unless the site keeps its own copy in theme/ under the URL's file name
-TEMML_URL = 'https://cdn.jsdelivr.net/npm/temml@0.13.5/dist/temml.min.js'
-TEMML_CSS_URL = 'https://cdn.jsdelivr.net/npm/temml@0.13.5/dist/Temml-Local.css'
+TEMML_URL = 'https://cdn.jsdelivr.net/npm/temml@0.14.0/dist/temml.min.js'
+TEMML_CSS_URL = 'https://cdn.jsdelivr.net/npm/temml@0.14.0/dist/Temml-Local.css'
 PELE_URL = 'https://cdn.jsdelivr.net/npm/pele@1.6.0/dist/pele.global.js'
 
 class Ctx:

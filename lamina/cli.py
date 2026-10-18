@@ -13,8 +13,8 @@ directory. SKILL.md in the repository is the reference.
 Set pinned = ["slug", ...] in a site.toml category to pin notes in that order.
 Pinned notes show 📌 before their titles. The Atom feed stays chronological.
 
-Math uses Temml (MathML); math and Mermaid load only where used. To self-host,
-put temml.min.js, Temml-Local.css, Temml.woff2 and mermaid.min.js in theme/.
+Math uses Temml (MathML), Mermaid diagrams pele; both load only where used. To
+self-host, put temml.min.js, Temml-Local.css, Temml.woff2 and pele.global.js in theme/.
 Unlinked images open in a zoom dialog. Missing local media warns at build time.
 On HTTPS or localhost, code blocks have subtle Copy text in the top-right corner.
 Copying briefly shows Copied. Headings h2-h4 have permalinks.

@@ -130,7 +130,7 @@ Features that turn on when a page uses them:
 | fenced or indented code | subtle Copy text in the top-right corner on HTTPS or localhost |
 | language-labelled code fence | syntax highlighting with bundled Prism |
 | image outside a link or button | click, Enter, or Space to enlarge; Escape, Close, or backdrop to dismiss |
-| ```` ```mermaid ```` | diagram rendered in the browser, source as fallback |
+| ```` ```mermaid ```` | diagram drawn in the browser by pele, in the theme's colors; source as fallback |
 | `$x$`, `$$…$$` | Temml MathML; `$5` and `$5-$10` stay prose |
 | `> [!NOTE]` / `[!IMPORTANT]` / `[!WARNING]` | callout |
 | `> [!ASIDE] text` | untitled remark in the right margin when wide, inline otherwise |
@@ -151,12 +151,12 @@ Signs can precede or follow `$` (`-$2` or `$-2`). Footnotes and asides do not af
 Percentages sort by their displayed number. Numbers precede text in both directions; dates and mixed labels sort as text.
 Inline dollar math cannot cross a backtick; use display math for TeX containing literal backticks.
 
-Mermaid and Temml load from pinned jsDelivr URLs, only on pages that use them.
+Pele (Mermaid syntax) and Temml load from pinned jsDelivr URLs, only on pages that use them.
 Math uses local system fonts, supplemented by Temml's small font file.
 Page-defined global TeX macros also work in footnote previews.
 TeX stays visible without JavaScript.
 
-To self-host, save `mermaid.min.js`, `temml.min.js`, `Temml-Local.css`, and `Temml.woff2` in `theme/`.
+To self-host, save `pele.global.js`, `temml.min.js`, `Temml-Local.css`, and `Temml.woff2` in `theme/`.
 The URLs are at the top of `lamina/build.py`.
 The font sits beside the Temml CSS at the same URL prefix.
 Keep the CSS and font together; pages then load the site's copies.

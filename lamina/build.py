@@ -16,7 +16,7 @@ from .pages import Page, discover, is_glossary, render_body, stamps
 # unless the site keeps its own copy in theme/ under the URL's file name
 TEMML_URL = 'https://cdn.jsdelivr.net/npm/temml@0.13.5/dist/temml.min.js'
 TEMML_CSS_URL = 'https://cdn.jsdelivr.net/npm/temml@0.13.5/dist/Temml-Local.css'
-MERMAID_URL = 'https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.min.js'
+PELE_URL = 'https://cdn.jsdelivr.net/npm/pele@1.6.0/dist/pele.global.js'
 
 class Ctx:
     """Everything decorate() and the templates need to know about the whole site."""
@@ -237,7 +237,7 @@ def page_html(p: Page, ctx: Ctx) -> str:
     head = [alt, feed_link(ctx),
             (f'<link rel="stylesheet" href="{lib_src(ctx.root, TEMML_CSS_URL)}">\n'
              f'<script defer src="{lib_src(ctx.root, TEMML_URL)}"></script>') if p.math else '',
-            f'<script defer src="{lib_src(ctx.root, MERMAID_URL)}"></script>' if p.mermaid else '',
+            f'<script defer src="{lib_src(ctx.root, PELE_URL)}"></script>' if p.mermaid else '',
             '<script defer src="/prism.js" data-manual></script>' if '<code class="language-' in p.html else '',
             '<script defer src="/lamina.js"></script>']
     footer = [f'<a href="{href_of(p.cat)}">← {html.escape(p.cat.title)}</a>',
@@ -339,7 +339,7 @@ def build(root: Path) -> Path:
         css += '\n/* site.css */\n' + extra.read_text(encoding='utf-8')
     (out / 'style.css').write_text(css, encoding='utf-8')
     for name in ('lamina.js', 'prism.js', 'favicon.svg', 'Temml.woff2',
-                 *(u.rsplit('/', 1)[1] for u in (TEMML_URL, TEMML_CSS_URL, MERMAID_URL))):
+                 *(u.rsplit('/', 1)[1] for u in (TEMML_URL, TEMML_CSS_URL, PELE_URL))):
         if f := theme_file(root, name):
             shutil.copy(f, out / name)
     static = root / 'static'

@@ -419,10 +419,14 @@ td .aside, th .aside {
 	}
 }
 
-/* Mermaid: source stays visible (and readable) until rendered / without JS. */
-pre.mermaid { background: none; padding: 0; text-align: center; color: var(--muted); font-size: .8rem; }
-pre.mermaid[data-processed] { color: inherit; font-size: inherit; }
-pre.mermaid svg { max-width: 100%; height: auto; }
+/* Mermaid via pele: source stays visible (and readable) until rendered / without JS.
+   pele measures labels in the pre's font and reads its colors from these variables. */
+pre.mermaid {
+	background: none; padding: 0; text-align: center; color: var(--muted); font-family: inherit; font-size: .8rem;
+	--pele-bg: var(--bg); --pele-fg: var(--fg); --pele-muted: var(--muted); --pele-line: var(--fg);
+	--pele-surface: var(--code-bg); --pele-surface-alt: var(--rule); --pele-border: var(--muted); --pele-accent: var(--link);
+}
+pre.mermaid:has(> .pele) { color: inherit; font-size: inherit; }
 
 /* MathML via Temml. Display blocks scroll instead of overflowing. */
 div.math { overflow-x: auto; margin: 1rem 0; }

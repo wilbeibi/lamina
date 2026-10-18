@@ -5,7 +5,7 @@
 //      (link previews, [[glossary]] terms, footnotes) -- built at build time
 //   3. asides and the words they are about highlight together on hover
 //   4. active-section marker for a long page's contents minimap
-//   5. mermaid bootstrap, theme-aware, re-renders when the OS theme flips
+//   5. mermaid diagrams drawn by pele; colors follow the theme through CSS
 //   6. window.lamina helpers for embedded animations
 //   7. image zoom, with keyboard access and native dialog focus handling
 (function () {
@@ -241,17 +241,7 @@
   }
 
   // ---- 5. mermaid --------------------------------------------------------
-  var diagrams = doc.querySelectorAll('pre.mermaid');
-  if (diagrams.length && window.mermaid) {
-    diagrams.forEach(function (el) { el.dataset.src = el.textContent; });
-    function draw() {
-      mermaid.initialize({ startOnLoad: false, theme: dark.matches ? 'dark' : 'neutral', securityLevel: 'strict' });
-      diagrams.forEach(function (el) { el.textContent = el.dataset.src; el.removeAttribute('data-processed'); });
-      mermaid.run({ nodes: diagrams });
-    }
-    draw();
-    dark.addEventListener('change', draw);
-  }
+  if (window.pele) doc.querySelectorAll('pre.mermaid').forEach(function (el) { pele.mount(el, el.textContent); });
   var zoom = null, zoomImage, zoomSize, zoomFrom;
   var fullSize = lang === 'zh' ? '原始尺寸' : 'Full size', fitSize = lang === 'zh' ? '适应屏幕' : 'Fit';
   function showImage(img) {

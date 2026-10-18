@@ -2,6 +2,7 @@
 # the landing page. Everything else has a default.
 # Math uses Temml automatically; self-host with temml.min.js, Temml-Local.css
 # and Temml.woff2 in theme/.
+# Mermaid fences are drawn by pele; self-host with pele.global.js in theme/.
 # Image zoom and local media checks are automatic.
 # Code copying, heading permalinks and table sorting need no settings.
 # Labelled code fences use local Prism highlighting; unknown languages stay plain.

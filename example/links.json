@@ -6,5 +6,9 @@
  "https://gwern.net/design": {
   "title": "Design Of This Website",
   "description": "Meta page describing Gwern.net, the self-documenting website’s implementation and experiments for better ‘semantic zoom’ of hypertext; technical decisions using Markdown and static hosting."
+ },
+ "https://pele.run": {
+  "title": "Pele · Mermaid diagrams as themeable SVG",
+  "description": "Pele is a lightweight open source library that renders Mermaid diagrams to SVG, themed with CSS variables."
  }
 }

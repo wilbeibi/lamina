@@ -48,7 +48,7 @@
 body {
 	background: var(--bg);
 	color: var(--fg);
-	font: 16px/1.6 -apple-system, "Noto Sans CJK SC", sans-serif;
+	font: 1rem/1.6 -apple-system, "Noto Sans CJK SC", sans-serif;
 	width: calc(100% - 2rem);
 	max-width: 46rem;
 	margin: 0 auto;

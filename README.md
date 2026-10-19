@@ -24,10 +24,11 @@ Lamina builds that page.
 - **Pages stay light.** Plain HTML that reads with JavaScript off.
 - **Small enough to own.** About 1k lines of Python, no options, no plugins.
 
+How much CSS and JavaScript a reader downloads per page (gzip):
+
 <img src="assets/page-weight.svg" alt="CSS and JavaScript a page loads, gzip: every page 11 KB, a page with code 25 KB, with math 71 KB, with a diagram 257 KB" width="640">
 
-What a page loads, CSS and JavaScript, gzip. Each extra loads only on the
-pages that use it:
+Each extra loads only on the pages that use it:
 
 - Code highlighting, by [Prism](https://prismjs.com)
 - Math, by [Temml](https://temml.org)

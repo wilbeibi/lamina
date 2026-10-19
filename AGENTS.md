@@ -44,6 +44,9 @@ Check monthly, bump one source at a time, and commit each bump separately.
   at code, the diagram and math on the example page, light and dark.
 - Sites that self-host a library in `theme/` keep their old copy; name the
   new version in the commit so they can update.
+- The README chart, `assets/page-weight.svg`, is gzip -9 of `style.css` +
+  `lamina.js`, plus `prism.js`, Temml's JS, CSS and font, or pele. Redraw it
+  when a bump moves a number by 1 KB or more.
 
 ## Writing pages
 

@@ -55,6 +55,10 @@ body {
 	padding: 2rem 1rem 4rem;
 }
 
+/* Han characters fill their square, with no ascenders or descenders to open
+   the lines up, so Chinese running text gets more leading than the 1.6 above. */
+article:lang(zh) > :is(p, ul, ol, blockquote) { line-height: 1.8; }
+
 a { color: var(--link); }
 a:hover { text-decoration: none; }
 

@@ -56,24 +56,26 @@ def discover(root: Path, site: Site) -> list[Page]:
                 warn(f'{md}: not YYYY-MM-DD-slug.md, skipped')
                 continue
             date, slug = m.groups()
-            lang = cat.lang
+            lang = ''                         # a translation names its language; any other page is read
             if '.' in slug:
                 core, suf = slug.rsplit('.', 1)
                 if suf in site.langs:
-                    if suf == cat.lang:
-                        die(f'{md}: .{suf} suffix, but {cat.dir} is already {suf}-canonical')
-                    if suf not in cat.translations:
-                        die(f'{md}: {cat.dir} declares no {suf} translations (site.toml)')
                     slug, lang = core, suf
-            canonical = lang == cat.lang
+            canonical = not lang
+            lang = lang or detect_lang(md.read_text(encoding='utf-8'))
+            if lang not in site.langs:
+                die(f'{md}: reads as {lang}; add [langs.{lang}] to site.toml')
             out = f'{slug}.html' if canonical else f'{slug}.{lang}.html'
             pages.append(Page(src=md, cat=cat, date=date, slug=slug, lang=lang,
                               canonical=canonical, out=out, assets=d / f'{date}-{slug}'))
     seen: dict[str, Page] = {}
+    versions: dict[tuple[str, str], Page] = {}
     for p in pages:
         if p.out in seen:
             die(f'{p.src} and {seen[p.out].src} would both build {p.out}')
         seen[p.out] = p
+        if (other := versions.setdefault((p.slug, p.lang), p)) is not p:
+            die(f'{p.src} and {other.src} are both the {p.lang} version of {p.slug}')
     # a page whose slug is `index` is the landing page; the first category's
     # list moves aside to <dir>.html so navigation still reaches it.
     first = site.category[0]
@@ -85,7 +87,7 @@ def discover(root: Path, site: Site) -> list[Page]:
     canon = {(p.cat.dir, p.slug) for p in pages if p.canonical}
     for p in pages:
         if not p.canonical and (p.cat.dir, p.slug) not in canon:
-            warn(f'{p.src.name}: translation without a {p.cat.lang} canonical page')
+            warn(f'{p.src.name}: translation without a canonical page')
     for cat in site.category:
         pinned: set[str] = set()
         for slug in cat.pinned:
@@ -125,6 +127,13 @@ def parse(p: Page) -> str:
     return '\n'.join(body)
 
 CJK = r'[⺀-鿿豈-﫿＀-￯]'
+PROSE_SKIP = re.compile(r'`[^`\n]*`|<[^>]*>|\]\([^)]*\)|https?://\S+')
+
+def detect_lang(text: str) -> str:
+    """An unsuffixed page's language, from its prose outside code, tags and URLs:
+    zh when CJK characters outnumber Latin words, else en. Category plays no part."""
+    prose = PROSE_SKIP.sub('', '\n'.join(ln for ln, code in fenced(text.split('\n')) if not code))
+    return 'zh' if len(re.findall(CJK, prose)) > len(re.findall(r'[A-Za-z]+', prose)) else 'en'
 
 def describe(md: MarkdownIt, tokens: Sequence[Token], env: EnvType) -> str:
     """The first top-level paragraph, as plain text: the page description.

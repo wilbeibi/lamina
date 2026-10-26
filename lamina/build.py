@@ -203,15 +203,18 @@ def newest(pages: Iterable[Page]) -> list[Page]:
     return sorted(pages, key=lambda p: (p.date, p.src.name), reverse=True)
 
 def langnav(p: Page, ctx: Ctx) -> tuple[str, str]:
-    """The page's category and language switcher, and its hreflang <link>s."""
+    """The page's category and language switcher, and its hreflang <link>s. The switcher
+    lists the languages this page exists in, canonical first; a category that declares
+    translations adds its languages too, graying the ones still missing."""
     cat, L = p.cat, ctx.site.langs
     parts = []
     if cat.index != 'index.html':
         parts.append(f'<a href="{href_of(cat)}">{html.escape(cat.title)}</a>')
-    langs = [cat.lang, *cat.translations]
+    versions = ctx.by_slug[p.slug]
+    expected = [cat.lang, *cat.translations] if cat.translations else []
+    langs = list(dict.fromkeys([*expected, *sorted(versions, key=lambda lang: not versions[lang].canonical)]))
     alt = ''
     if len(langs) > 1:
-        versions = ctx.by_slug[p.slug]
         for lang in langs:
             name = L[lang].name
             if lang == p.lang:
@@ -221,9 +224,10 @@ def langnav(p: Page, ctx: Ctx) -> tuple[str, str]:
             else:
                 miss = L[p.lang].missing.format(name=name)
                 parts.append(f'<span class="off" title="{html.escape(miss, quote=True)}">{name}</span>')
-        if len(versions) > 1 and cat.lang in versions:
+        canon = next((v for v in versions.values() if v.canonical), None)
+        if len(versions) > 1 and canon:
             alt = ''.join(f'<link rel="alternate" hreflang="{lang}" href="/{versions[lang].out}">' for lang in langs if lang in versions)
-            alt += f'<link rel="alternate" hreflang="x-default" href="/{versions[cat.lang].out}">'
+            alt += f'<link rel="alternate" hreflang="x-default" href="/{canon.out}">'
     nav = f'<span class="langnav">{SEP.join(parts)}</span>' if parts else ''
     return nav, alt
 
@@ -257,6 +261,7 @@ def index_html(cat: Category, ctx: Ctx) -> str:
     pin = f'<span role="img" aria-label="{html.escape(site.langs[cat.lang].pinned, quote=True)}">📌</span> '
     item_t = tpl(ctx, 'index-item.html')
     lis = ''.join(render(item_t, {'date': p.date, 'href': p.out, 'title': html.escape(p.title),
+                                  'lang': '' if p.lang == cat.lang else f' lang="{p.lang}"',
                                   'pin': pin if p.slug in cat.pinned else '',
                                   'description': html.escape(p.description, quote=True)}) for p in items)
     sec = [f'<strong>{html.escape(c.title)}</strong>' if c is cat else f'<a href="{href_of(c)}">{html.escape(c.title)}</a>'

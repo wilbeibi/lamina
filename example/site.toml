@@ -1,5 +1,6 @@
 # lamina site config. Categories are directories under pages/; the first one is
 # the landing page. Everything else has a default.
+# A page's language comes from its text (mostly CJK: zh, else en), not its category.
 # Math uses Temml automatically; self-host with temml.min.js, Temml-Local.css
 # and Temml.woff2 in theme/.
 # Mermaid fences use pele 1.10.0; update self-hosted theme/pele.global.js separately.

@@ -37,7 +37,10 @@ theme/<file>                                 overrides the built-in file of the 
 public/                                      the built site
 ```
 
-- Category = directory, date = filename prefix, language = filename suffix.
+- Category = directory, date = filename prefix. Language belongs to the page,
+  not the category: a translation names it in its suffix; any other page is
+  read from its text (more CJK characters than Latin words: zh, else en).
+  Any category may hold pages in any language, and translations of them.
   URLs are flat, so a slug must be unique across the site and moving a page
   between categories does not change its URL.
 - Title = the first `# ` line (removed from the body). Description = the first
@@ -73,8 +76,8 @@ pinned = "置顶"           # accessible pin label; English default: Pinned
 dir = "notes"            # pages/notes/
 title = "notes"          # default: dir
 description = ""
-lang = "en"              # language of the canonical pages
-translations = []        # e.g. ["en"] for pages/notes/*.en.md
+lang = "en"              # language of the list page (pages detect their own)
+translations = []        # e.g. ["en"]: every page here offers these in its switcher, missing ones grayed
 pinned = []              # e.g. ["glossary", "second-note"], canonical slugs in display order
 ```
 

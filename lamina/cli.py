@@ -7,8 +7,9 @@
     static/                                     -> public/
     theme/<file>                                overrides the built-in theme file
 
-No front matter: category = directory, date = filename prefix, language =
-filename suffix, title = the first `# ` line. Run commands in the site
+No front matter: category = directory, date = filename prefix, title = the
+first `# ` line, language = a translation's suffix, else read from the text
+(mostly CJK: zh, else en) whatever the category. Run commands in the site
 directory. SKILL.md in the repository is the reference.
 Set pinned = ["slug", ...] in a site.toml category to pin notes in that order.
 Pinned notes show 📌 before their titles. The Atom feed stays chronological.

@@ -152,6 +152,7 @@ Percentages sort by their displayed number. Numbers precede text in both directi
 Inline dollar math cannot cross a backtick; use display math for TeX containing literal backticks.
 
 Pele (Mermaid syntax) and Temml load from pinned jsDelivr URLs, only on pages that use them.
+The default Pele version is 1.10.0; self-hosted copies must be updated separately.
 Math uses local system fonts, supplemented by Temml's small font file.
 Page-defined global TeX macros also work in footnote previews.
 TeX stays visible without JavaScript.

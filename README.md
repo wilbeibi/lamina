@@ -26,7 +26,7 @@ Lamina builds that page.
 
 How much CSS and JavaScript a reader downloads per page:
 
-<img src="assets/page-weight.svg" alt="CSS and JavaScript a page loads: every page 11 KB, a page with code 25 KB, with math 71 KB, with a diagram 257 KB" width="640">
+<img src="assets/page-weight.svg" alt="CSS and JavaScript a page loads: every page 11 KB, a page with code 25 KB, with math 71 KB, with a diagram 269 KB" width="640">
 
 Each extra loads only on the pages that use it:
 

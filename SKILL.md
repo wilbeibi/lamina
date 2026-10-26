@@ -195,7 +195,9 @@ two on one paragraph.
 System fonts, light and dark by OS setting. Put a file named `style.css`,
 `lamina.js`, `prism.js`, `favicon.svg`, `page.html`, `index.html`, `index-item.html`,
 `atom.xml`, or `atom-item.xml` in `theme/` to replace the built-in one;
-`theme/site.css` is appended to the stylesheet instead of replacing it.
+`theme/site.css` is appended to the stylesheet and `theme/site.js` to
+`lamina.js` instead of replacing them: site-specific additions that keep
+receiving lamina's updates.
 Templates use `{{name}}` placeholders; read the built-in ones for the names.
 
 `lamina.js` only enhances: previews, code highlighting and copying, table sorting, aside highlighting, the

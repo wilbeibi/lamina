@@ -338,7 +338,12 @@ def build(root: Path) -> Path:
     if extra.exists():
         css += '\n/* site.css */\n' + extra.read_text(encoding='utf-8')
     (out / 'style.css').write_text(css, encoding='utf-8')
-    for name in ('lamina.js', 'prism.js', 'favicon.svg', 'Temml.woff2',
+    js = tpl(ctx, 'lamina.js')
+    extra = root / 'theme' / 'site.js'
+    if extra.exists():
+        js += '\n/* site.js */\n' + extra.read_text(encoding='utf-8')
+    (out / 'lamina.js').write_text(js, encoding='utf-8')
+    for name in ('prism.js', 'favicon.svg', 'Temml.woff2',
                  *(u.rsplit('/', 1)[1] for u in (TEMML_URL, TEMML_CSS_URL, PELE_URL))):
         if f := theme_file(root, name):
             shutil.copy(f, out / name)

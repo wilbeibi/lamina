@@ -202,6 +202,9 @@ System fonts, light and dark by OS setting. Put a file named `style.css`,
 `lamina.js` instead of replacing them: site-specific additions that keep
 receiving lamina's updates.
 Templates use `{{name}}` placeholders; read the built-in ones for the names.
+Pages load the stylesheet and scripts at addresses carrying a hash of their
+content (`/style.css?v=…`), so no browser keeps an old copy after a rebuild;
+a custom template keeps `{{style}}` for the stylesheet.
 
 `lamina.js` only enhances: previews, code highlighting and copying, table sorting, aside highlighting, the
 contents marker, image zoom, math, and Mermaid. Without it every page is complete,

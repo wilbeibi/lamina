@@ -1,4 +1,5 @@
 """The whole site: cross-page links and popups, templates, and writing public/."""
+import hashlib
 import html
 import posixpath
 import re
@@ -32,6 +33,7 @@ class Ctx:
         self.feed = bool(site.url)                        # the atom feed needs absolute links
         self.links = read_links(root)                     # external url -> {title, description}; `lamina links`
         self.external: set[str] = set()                   # external urls the pages link to
+        self.assets: dict[str, str] = {}                  # shared file -> its versioned address; write_assets
 
     def find_page(self, slug: str, lang: str) -> Page | None:
         """The page with this slug in this language, else any language, else None."""
@@ -180,10 +182,9 @@ def theme_file(root: Path, name: str) -> Path | None:
             return base / name
     return None
 
-def lib_src(root: Path, url: str) -> str:
+def lib_src(ctx: Ctx, url: str) -> str:
     """Where a page loads a library asset from: the site's theme/ copy, else the CDN."""
-    name = url.rsplit('/', 1)[1]
-    return f'/{name}' if (root / 'theme' / name).exists() else url
+    return ctx.assets.get(url.rsplit('/', 1)[1], url)
 
 def tpl(ctx: Ctx, name: str) -> str:
     f = theme_file(ctx.root, name)
@@ -239,15 +240,15 @@ def page_html(p: Page, ctx: Ctx) -> str:
     site = ctx.site
     nav, alt = langnav(p, ctx)
     head = [alt, feed_link(ctx),
-            (f'<link rel="stylesheet" href="{lib_src(ctx.root, TEMML_CSS_URL)}">\n'
-             f'<script defer src="{lib_src(ctx.root, TEMML_URL)}"></script>') if p.math else '',
-            f'<script defer src="{lib_src(ctx.root, PELE_URL)}"></script>' if p.mermaid else '',
-            '<script defer src="/prism.js" data-manual></script>' if '<code class="language-' in p.html else '',
-            '<script defer src="/lamina.js"></script>']
+            (f'<link rel="stylesheet" href="{lib_src(ctx, TEMML_CSS_URL)}">\n'
+             f'<script defer src="{lib_src(ctx, TEMML_URL)}"></script>') if p.math else '',
+            f'<script defer src="{lib_src(ctx, PELE_URL)}"></script>' if p.mermaid else '',
+            f'<script defer src="{ctx.assets["prism.js"]}" data-manual></script>' if '<code class="language-' in p.html else '',
+            f'<script defer src="{ctx.assets["lamina.js"]}"></script>']
     footer = [f'<a href="{href_of(p.cat)}">← {html.escape(p.cat.title)}</a>',
               '<a href="/atom.xml">atom</a>' if ctx.feed else '', site.footer]
     return render(tpl(ctx, 'page.html'), {
-        'lang': p.lang, 'site_name': html.escape(site.name), 'title': html.escape(p.title),
+        'lang': p.lang, 'style': ctx.assets['style.css'], 'site_name': html.escape(site.name), 'title': html.escape(p.title),
         'description': html.escape(p.description, quote=True), 'head': '\n'.join(x for x in head if x),
         'nav': nav, 'meta': p.meta, 'toc': p.toc, 'content': p.html, 'pops': p.pops,
         'footer': ' · '.join(x for x in footer if x),
@@ -278,7 +279,7 @@ def index_html(cat: Category, ctx: Ctx) -> str:
     title = html.escape(site.name) if cat is first else f'{html.escape(cat.title)} — {html.escape(site.name)}'
     desc = cat.description or (site.description if cat is first else '')
     return render(tpl(ctx, 'index.html'), {
-        'lang': cat.lang, 'site_name': html.escape(site.name), 'title': title,
+        'lang': cat.lang, 'style': ctx.assets['style.css'], 'site_name': html.escape(site.name), 'title': title,
         'description': html.escape(desc, quote=True), 'head': feed_link(ctx),
         'secnav': secnav, 'items': lis, 'footer': footer,
         'brand': f'<strong>{html.escape(site.name)}</strong>' if at_root else f'<a href="/">{html.escape(site.name)}</a>',
@@ -318,6 +319,22 @@ def load(root: Path, site: Site) -> Ctx:
         decorate(p, ctx)
     return ctx
 
+def write_assets(ctx: Ctx, out: Path) -> None:
+    """Write the files every page shares. Pages load each at an address carrying a hash of its
+    content, so a browser's cached copy never outlives a rebuild."""
+    for name, extra in (('style.css', 'site.css'), ('lamina.js', 'site.js')):
+        text = tpl(ctx, name)
+        if (f := ctx.root / 'theme' / extra).exists():
+            text += f'\n/* {extra} */\n' + f.read_text(encoding='utf-8')
+        (out / name).write_text(text, encoding='utf-8')
+    libs = [u.rsplit('/', 1)[1] for u in (TEMML_URL, TEMML_CSS_URL, PELE_URL)]
+    for name in ('prism.js', 'favicon.svg', 'Temml.woff2', *libs):
+        if f := theme_file(ctx.root, name):
+            shutil.copy(f, out / name)
+    for name in ('style.css', 'lamina.js', 'prism.js', *libs):
+        if (f := out / name).exists():
+            ctx.assets[name] = f'/{name}?v={hashlib.sha256(f.read_bytes()).hexdigest()[:8]}'
+
 def build(root: Path) -> Path:
     WARNINGS.clear()
     root = root.resolve()
@@ -329,6 +346,7 @@ def build(root: Path) -> Path:
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
+    write_assets(ctx, out)
     for p in pages:
         (out / p.out).write_text(page_html(p, ctx), encoding='utf-8')
         if p.assets.is_dir():
@@ -338,20 +356,6 @@ def build(root: Path) -> Path:
     if ctx.feed:
         (out / 'atom.xml').write_text(atom_xml(ctx), encoding='utf-8')
 
-    css = tpl(ctx, 'style.css')
-    extra = root / 'theme' / 'site.css'
-    if extra.exists():
-        css += '\n/* site.css */\n' + extra.read_text(encoding='utf-8')
-    (out / 'style.css').write_text(css, encoding='utf-8')
-    js = tpl(ctx, 'lamina.js')
-    extra = root / 'theme' / 'site.js'
-    if extra.exists():
-        js += '\n/* site.js */\n' + extra.read_text(encoding='utf-8')
-    (out / 'lamina.js').write_text(js, encoding='utf-8')
-    for name in ('prism.js', 'favicon.svg', 'Temml.woff2',
-                 *(u.rsplit('/', 1)[1] for u in (TEMML_URL, TEMML_CSS_URL, PELE_URL))):
-        if f := theme_file(root, name):
-            shutil.copy(f, out / name)
     static = root / 'static'
     if static.is_dir():
         for f in static.rglob('*.html'):

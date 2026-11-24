@@ -8,4 +8,4 @@ Each heading becomes an anchor; hovering a link to an anchor shows the heading a
 
 ## Result
 
-Nothing to report.
+Nothing to report. See [the math section](/#Math) on the landing page.

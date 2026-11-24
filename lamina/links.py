@@ -1,5 +1,4 @@
 """links.json: cached titles and descriptions of the pages outside links point to."""
-import html
 import html.parser
 import json
 import re
@@ -63,7 +62,7 @@ def fetch_link(url: str) -> LinkMeta | None:
     m = hm.meta
 
     def tidy(s: str | None) -> str:
-        return re.sub(r'\s+', ' ', html.unescape(s or '')).strip()
+        return re.sub(r'\s+', ' ', s or '').strip()
     title = tidy(m.get('og:title') or m.get('twitter:title') or hm.title)
     desc = tidy(m.get('og:description') or m.get('twitter:description') or m.get('description'))
     return {'title': clip(title, 120), 'description': clip(desc, 240)} if title or desc else None

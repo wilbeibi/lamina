@@ -49,10 +49,18 @@ class QuietHandler(http.server.SimpleHTTPRequestHandler):
 PORT = 8471   # off the beaten track, so it never collides with another dev server
 
 def signature(root: Path) -> int:
-    """The newest mtime among everything a build reads."""
+    """Hash of paths, mtimes, and sizes across everything a build reads."""
     files = [root / 'site.toml', root / LINKS_FILE,
              *(f for d in (root / 'pages', root / 'theme', root / 'static', THEME) for f in d.rglob('*'))]
-    return max((f.stat().st_mtime_ns for f in files if f.is_file()), default=0)
+    state: list[tuple[str, int, int]] = []
+    for f in files:
+        try:
+            if f.is_file():
+                st = f.stat()
+                state.append((str(f), st.st_mtime_ns, st.st_size))
+        except OSError:
+            continue
+    return hash(tuple(sorted(state)))
 
 def cmd_serve(root: Path) -> None:
     out = build(root)

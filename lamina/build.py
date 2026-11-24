@@ -54,41 +54,65 @@ TOC_MIN = 3   # h2s a page needs before it gets a table of contents
 LINK_RE = re.compile(r'<a\b([^>]*?)\shref="([^"]*)"([^>]*)>')
 TITLE_RE = re.compile(r'\stitle="([^"]*)"')
 WL_RE = re.compile(r'<x-wikilink data-target="([^"]*)">(.*?)</x-wikilink>', re.DOTALL)
-INTERNAL_RE = re.compile(r'^/?([^/#?]+\.html)?(?:#(.*))?$')
+FN_OL = re.compile(r'<section class="footnotes"><ol>(.*)</ol></section>\s*$', re.DOTALL)
+FN_LI = re.compile(r'<li id="fn-(\d+)">(.*?)</li>(?=\s*(?:<li id="fn-\d+">|$))', re.DOTALL)
+FN_BACK = re.compile(r' <a href="#fnref-[^"]*" class="fnback"[^<]*</a>')
+UNSAFE_URL = re.compile(r'[\s"#%?\\]')
 
-def dead_asset(ctx: Ctx, href: str) -> bool:
-    """A local href into a page's asset directory (slug/...) that no source file backs."""
-    u = urllib.parse.urlsplit(html.unescape(href))
-    parts = [x for x in urllib.parse.unquote(u.path).lstrip('/').split('/') if x not in ('', '.')]
-    if u.scheme or u.netloc or len(parts) < 2 or '..' in parts:
-        return False
-    owners = [p for p in ctx.pages if p.slug == parts[0]]
-    return bool(owners) and not any(p.assets.joinpath(*parts[1:]).exists() for p in owners)
+def quote_path(s: str) -> str:
+    return UNSAFE_URL.sub(lambda m: f'%{ord(m.group(0)):02X}', s)
 
-class MediaSources(HTMLParser):
+class PageRefs(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
-        self.urls: set[str] = set()
+        self.links: list[str] = []
+        self.media: set[str] = set()
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        if tag in ('img', 'audio', 'video', 'source'):
-            self.urls.update(value for key, value in attrs if value and
-                             (key == 'src' or (tag == 'video' and key == 'poster')))
+        a = dict(attrs)
+        if tag == 'a' and (href := a.get('href')) is not None and 'heading-link' not in (a.get('class') or '').split():
+            self.links.append(href)
+        elif tag in ('img', 'audio', 'video', 'source'):
+            self.media.update(value for key, value in attrs if value and
+                              (key == 'src' or (tag == 'video' and key == 'poster')))
 
-def check_media(p: Page, out: Path) -> None:
-    """Check local media against the finished output, including static/ overrides."""
-    media = MediaSources()
-    media.feed(p.html)
-    for url in sorted(media.urls):
+def check_refs(p: Page, ctx: Ctx, out: Path) -> None:
+    """Check local links, anchors, and media against the finished output, including static/."""
+    refs = PageRefs()
+    refs.feed(p.html)
+    for href in dict.fromkeys(refs.links):
+        u = urllib.parse.urlsplit(href)
+        if u.scheme or u.netloc:
+            continue
+        raw, anchor = urllib.parse.unquote(u.path), urllib.parse.unquote(u.fragment)
+        if not raw and not anchor:
+            warn(f'{p.src.name}: dead link {href}')
+            continue
+        if not raw:
+            tp: Page | None = p
+        else:
+            if '..' in Path(raw).parts:
+                warn(f'{p.src.name}: dead link {href}')
+                continue
+            rel = posixpath.normpath('/' + raw).lstrip('/')
+            target = out / rel / 'index.html' if raw.endswith('/') or not rel else out / rel
+            if not target.is_file():
+                warn(f'{p.src.name}: dead link {href}')
+                continue
+            tp = ctx.by_out.get(target.relative_to(out).as_posix())
+        if anchor and tp is not None and anchor not in tp.pv and anchor not in tp.ids:
+            warn(f'{p.src.name}: dead anchor {href}')
+    for url in sorted(refs.media):
         u = urllib.parse.urlsplit(url)
         if u.scheme or u.netloc or not u.path:
             continue
-        path = posixpath.normpath('/' + urllib.parse.unquote(u.path)).lstrip('/')
-        if not (out / path).is_file():
+        raw = urllib.parse.unquote(u.path)
+        path = posixpath.normpath('/' + raw).lstrip('/')
+        if '..' in Path(raw).parts or not (out / path).is_file():
             warn(f'{p.src.name}: dead media source {url}')
 
 def decorate(p: Page, ctx: Ctx) -> None:
-    """Resolve the page's wikilinks, check its links, attach popups and the TOC."""
+    """Resolve the page's wikilinks, attach popups, inject sidenotes, and build the TOC."""
     pops: dict[str, str] = {}                  # template id -> popup html
     keys: dict[tuple[str, str], str] = {}      # popup target -> template id
 
@@ -117,7 +141,7 @@ def decorate(p: Page, ctx: Ctx) -> None:
         if tp is None or (anchor and anchor not in tp.pv):
             warn(f'{p.src.name}: unresolved wikilink [[{target}]]')
             return f'<span class="wl-missing">{label}</span>'
-        href = ('' if tp is p else tp.out) + (f'#{urllib.parse.quote(anchor)}' if anchor else '')
+        href = ('' if tp is p else html.escape(quote_path(tp.out), quote=True)) + (f'#{urllib.parse.quote(anchor)}' if anchor else '')
         pid = popfor(tp, anchor)
         pop_attr = f' data-pop="{pid}"' if pid else ''
         return f'<a href="{href}" class="wl"{pop_attr}>{label}</a>'
@@ -145,25 +169,27 @@ def decorate(p: Page, ctx: Ctx) -> None:
         if url.startswith(('http://', 'https://')):
             t = TITLE_RE.search(a1 + a3)
             return with_pop(external(url, html.unescape(t.group(1)) if t else ''))
-        im = INTERNAL_RE.match(urllib.parse.unquote(html.unescape(href)))
-        if not im:
-            if dead_asset(ctx, href):
-                warn(f'{p.src.name}: dead asset link {href}')
+        u = urllib.parse.urlsplit(url)
+        if u.scheme or u.netloc or u.query:
             return m.group(0)
-        file, anchor = im.group(1), im.group(2) or ''
-        tp = p if not file else ctx.by_out.get(file)
-        if tp is None:
-            if file not in ctx.indexes and not (ctx.root / 'static' / file).exists():
-                warn(f'{p.src.name}: dead link {href}')
-            return m.group(0)
-        if anchor and anchor not in tp.pv and anchor not in tp.ids:
-            warn(f'{p.src.name}: dead anchor {href}')
-            return m.group(0)
-        return with_pop(popfor(tp, anchor))
+        path, anchor = urllib.parse.unquote(u.path), urllib.parse.unquote(u.fragment)
+        tp = p if not path else ctx.by_out.get('index.html' if path == '/' else path.lstrip('/'))
+        return with_pop(popfor(tp, anchor)) if tp else m.group(0)
     h = LINK_RE.sub(lk, h)
 
-    for ident, body in p.notes:
-        pops[f'pop-fn-{ident}'] = body
+    # footnotes feed hover popups and (without block elements) margin sidenotes;
+    # extracted after wikilinks and links resolve so [[terms]] inside notes work.
+    if fm := FN_OL.search(h):
+        for n, raw in FN_LI.findall(fm.group(1)):
+            body = re.sub(r'<p>\s*</p>\s*$', '', FN_BACK.sub('', raw))
+            pops[f'pop-fn-{n}'] = re.sub(r' data-pop="[^"]*"', '', body)
+            if re.search(r'<(pre|ul|ol|div|blockquote|table)\b', body):
+                continue
+            inner = re.sub(r'</p>\s*<p>', '<br>', body.strip()).removeprefix('<p>').removesuffix('</p>')
+            ref = h.find(f'<sup class="fn" id="fnref-{n}">')
+            if ref >= 0:
+                at = h.find('</sup>', ref) + 6
+                h = f'{h[:at]}<span class="sn"><b>{n}</b> {inner}</span>{h[at:]}'
     p.html = h
     p.pops = ('<div hidden>' + ''.join(f'<template id="{k}">{v}</template>' for k, v in pops.items()) + '</div>') if pops else ''
 
@@ -198,7 +224,7 @@ def render(t: str, values: Mapping[str, object]) -> str:
 SEP = '<span class="sep">·</span>'
 
 def href_of(cat: Category) -> str:
-    return '/' if cat.index == 'index.html' else f'/{cat.index}'
+    return '/' if cat.index == 'index.html' else f'/{html.escape(quote_path(cat.index), quote=True)}'
 
 def newest(pages: Iterable[Page]) -> list[Page]:
     return sorted(pages, key=lambda p: (p.date, p.src.name), reverse=True)
@@ -217,18 +243,21 @@ def langnav(p: Page, ctx: Ctx) -> tuple[str, str]:
     alt = ''
     if len(langs) > 1:
         for lang in langs:
-            name = L[lang].name
+            raw_name = L[lang].name
+            name = html.escape(raw_name)
             if lang == p.lang:
                 parts.append(f'<strong>{name}</strong>')
             elif lang in versions:
-                parts.append(f'<a href="{versions[lang].out}" hreflang="{lang}">{name}</a>')
+                out_href = html.escape(quote_path(versions[lang].out), quote=True)
+                parts.append(f'<a href="{out_href}" hreflang="{lang}">{name}</a>')
             else:
-                miss = L[p.lang].missing.format(name=name)
+                miss = L[p.lang].missing.format(name=raw_name)
                 parts.append(f'<span class="off" title="{html.escape(miss, quote=True)}">{name}</span>')
         canon = next((v for v in versions.values() if v.canonical), None)
         if len(versions) > 1 and canon:
-            alt = ''.join(f'<link rel="alternate" hreflang="{lang}" href="/{versions[lang].out}">' for lang in langs if lang in versions)
-            alt += f'<link rel="alternate" hreflang="x-default" href="/{canon.out}">'
+            alt = ''.join(f'<link rel="alternate" hreflang="{lang}" href="/{html.escape(quote_path(versions[lang].out), quote=True)}">'
+                          for lang in langs if lang in versions)
+            alt += f'<link rel="alternate" hreflang="x-default" href="/{html.escape(quote_path(canon.out), quote=True)}">'
     nav = f'<span class="langnav">{SEP.join(parts)}</span>' if parts else ''
     return nav, alt
 
@@ -248,7 +277,7 @@ def page_html(p: Page, ctx: Ctx) -> str:
     footer = [f'<a href="{href_of(p.cat)}">← {html.escape(p.cat.title)}</a>',
               '<a href="/atom.xml">atom</a>' if ctx.feed else '', site.footer]
     return render(tpl(ctx, 'page.html'), {
-        'lang': p.lang, 'style': ctx.assets['style.css'], 'site_name': html.escape(site.name), 'title': html.escape(p.title),
+        'lang': p.lang, 'style': ctx.assets['style.css'], 'site_name': html.escape(site.name, quote=True), 'title': html.escape(p.title),
         'description': html.escape(p.description, quote=True), 'head': '\n'.join(x for x in head if x),
         'nav': nav, 'meta': p.meta, 'toc': p.toc, 'content': p.html, 'pops': p.pops,
         'footer': ' · '.join(x for x in footer if x),
@@ -261,7 +290,7 @@ def index_html(cat: Category, ctx: Ctx) -> str:
     items += newest(p for slug, p in pages.items() if slug not in cat.pinned)
     pin = f'<span role="img" aria-label="{html.escape(site.langs[cat.lang].pinned, quote=True)}">📌</span> '
     item_t = tpl(ctx, 'index-item.html')
-    lis = ''.join(render(item_t, {'date': p.date, 'href': p.out, 'title': html.escape(p.title),
+    lis = ''.join(render(item_t, {'date': p.date, 'href': html.escape(quote_path(p.out), quote=True), 'title': html.escape(p.title),
                                   'lang': '' if p.lang == cat.lang else f' lang="{p.lang}"',
                                   'pin': pin if p.slug in cat.pinned else '',
                                   'description': html.escape(p.description, quote=True)}) for p in items)
@@ -279,7 +308,7 @@ def index_html(cat: Category, ctx: Ctx) -> str:
     title = html.escape(site.name) if cat is first else f'{html.escape(cat.title)} — {html.escape(site.name)}'
     desc = cat.description or (site.description if cat is first else '')
     return render(tpl(ctx, 'index.html'), {
-        'lang': cat.lang, 'style': ctx.assets['style.css'], 'site_name': html.escape(site.name), 'title': title,
+        'lang': cat.lang, 'style': ctx.assets['style.css'], 'site_name': html.escape(site.name, quote=True), 'title': title,
         'description': html.escape(desc, quote=True), 'head': feed_link(ctx),
         'secnav': secnav, 'items': lis, 'footer': footer,
         'brand': f'<strong>{html.escape(site.name)}</strong>' if at_root else f'<a href="/">{html.escape(site.name)}</a>',
@@ -292,12 +321,12 @@ def atom_xml(ctx: Ctx) -> str:
     item_t = tpl(ctx, 'atom-item.xml')
     items = ''.join(render(item_t, {
         'title': html.escape(p.title), 'updated': p.atom_updated,
-        'url': f'{url}/' if p.out == 'index.html' else f'{url}/{p.out}',
+        'url': html.escape(f'{url}/' if p.out == 'index.html' else f'{url}/{quote_path(p.out)}', quote=True),
         'summary': html.escape(p.description)}) for p in entries)
     updated = max((p.atom_updated for p in entries), default='1970-01-01T00:00:00Z')
     return render(tpl(ctx, 'atom.xml'), {
         'site_name': html.escape(site.name), 'description': html.escape(site.description),
-        'url': url, 'author': html.escape(site.name), 'updated': updated, 'items': items,
+        'url': html.escape(url, quote=True), 'author': html.escape(site.name), 'updated': updated, 'items': items,
     })
 
 def safe_outdir(root: Path, out: Path) -> Path:
@@ -309,12 +338,11 @@ def safe_outdir(root: Path, out: Path) -> Path:
     return out
 
 def load(root: Path, site: Site) -> Ctx:
-    """Discover, parse, and decorate every page: everything but the writing."""
+    """Discover, parse, and decorate every page: everything but git dates and writing."""
     pages = discover(root, site)
     ctx = Ctx(root, site, pages)
     for p in pages:
         render_body(p)
-        stamps(p, root, site)
     for p in pages:
         decorate(p, ctx)
     return ctx
@@ -342,6 +370,8 @@ def build(root: Path) -> Path:
     out = safe_outdir(root, root / 'public')
     ctx = load(root, site)
     pages = ctx.pages
+    for p in pages:
+        stamps(p, root, site)
 
     if out.exists():
         shutil.rmtree(out)
@@ -359,11 +389,12 @@ def build(root: Path) -> Path:
     static = root / 'static'
     if static.is_dir():
         for f in static.rglob('*.html'):
-            if f.relative_to(static).as_posix() in ctx.by_out or f.name in ctx.indexes:
-                warn(f'static/{f.relative_to(static)} shadows a generated page')
+            rel_html = f.relative_to(static).as_posix()
+            if rel_html in ctx.by_out or rel_html in ctx.indexes:
+                warn(f'static/{rel_html} shadows a generated page')
         shutil.copytree(static, out, dirs_exist_ok=True)
     for p in pages:
-        check_media(p, out)
+        check_refs(p, ctx, out)
     # a site with links.json wants previews: name the links `lamina links` has not tried yet
     if (root / LINKS_FILE).exists() and (new := len(ctx.external - ctx.links.keys())):
         print(f'lamina: {new} new outside link{"s" * (new > 1)} without a preview; run lamina links')

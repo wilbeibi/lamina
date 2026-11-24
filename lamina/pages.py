@@ -29,7 +29,6 @@ class Page(msgspec.Struct):
     description: str = ''
     html: str = ''
     headings: list[Heading] = []
-    notes: list[tuple[str, str]] = []            # (id, html)
     mermaid: bool = False
     math: bool = False
     pv: dict[str, Preview] = {}                  # anchor -> preview
@@ -86,7 +85,11 @@ def discover(root: Path, site: Site) -> list[Page]:
             die(f'{seen[cat.index].src} and the {cat.dir} index would both build {cat.index}')
     canon = {(p.cat.dir, p.slug) for p in pages if p.canonical}
     for p in pages:
-        if not p.canonical and (p.cat.dir, p.slug) not in canon:
+        if p.canonical and '.' in p.slug:
+            core, suf = p.slug.rsplit('.', 1)
+            if (p.cat.dir, core) in canon:
+                die(f'{p.src}: unknown language {suf!r} (add [langs.{suf}] to site.toml)')
+        elif not p.canonical and (p.cat.dir, p.slug) not in canon:
             warn(f'{p.src.name}: translation without a canonical page')
     for cat in site.category:
         pinned: set[str] = set()
@@ -98,22 +101,40 @@ def discover(root: Path, site: Site) -> list[Page]:
             pinned.add(slug)
     return pages
 
-FNREF = re.compile(r'<sup class="fn"[^>]*>.*?</sup>|<span class="aside">.*?</span>', re.DOTALL)
+FNREF = re.compile(r'<sup class="fn"[^>]*>.*?</sup>', re.DOTALL)
+SPAN_TAG = re.compile(r'</?span\b[^>]*>')
 
 def plain(h: str) -> str:
     """Rendered HTML as text for descriptions and previews: tags, footnote refs, and asides dropped."""
-    return html.unescape(TAG.sub('', FNREF.sub('', h)))
+    h = FNREF.sub('', h)
+    while (start := h.find('<span class="aside">')) >= 0:
+        depth, end = 0, len(h)
+        for m in SPAN_TAG.finditer(h, start):
+            depth += -1 if m.group(0).startswith('</') else 1
+            if depth == 0:
+                end = m.end()
+                break
+        h = h[:start] + h[end:]
+    return html.unescape(TAG.sub('', h))
+
+FENCE = re.compile(r'^\s{0,3}(`{3,}|~{3,})')
 
 def fenced(lines: Iterable[str]) -> Iterator[tuple[str, bool]]:
     """(line, inside a code fence) for each line; the fences count as inside."""
-    fence = None
+    close: re.Pattern[str] | None = None
     for ln in lines:
-        f = FENCE.match(ln)
-        if f and (fence is None or f.group(1)[0] == fence):
-            fence = None if fence else f.group(1)[0]
-            yield ln, True
+        if close is None:
+            if f := FENCE.match(ln):
+                ch = f.group(1)
+                if ch[0] != '`' or '`' not in ln[f.end():]:
+                    close = re.compile(rf'^\s{{0,3}}{ch[0]}{{{len(ch)},}}\s*$')
+                    yield ln, True
+                    continue
+            yield ln, False
         else:
-            yield ln, fence is not None
+            if close.match(ln):
+                close = None
+            yield ln, True
 
 def parse(p: Page) -> str:
     """Set the page's title from its first `# ` line; return the rest as its body."""
@@ -141,7 +162,7 @@ def describe(md: MarkdownIt, tokens: Sequence[Token], env: EnvType) -> str:
     inside = False
     for i, t in enumerate(tokens):
         if t.type == 'html_block' and t.content.startswith(('<aside', '</aside')):
-            inside = t.content.startswith('<aside')
+            inside = t.content.startswith('<aside') and not t.content.rstrip().endswith('</aside>')
         elif t.type == 'paragraph_open' and t.level == 0 and not inside:
             # the paragraph's inline token alone: its text without the <p>
             s = plain(md.renderer.render([tokens[i + 1]], md.options, env))
@@ -157,7 +178,6 @@ def clip(s: str, n: int) -> str:
         cut = cut[:cut.rfind(' ')]
     return cut.rstrip(' ,;:，；：') + '…'
 
-FENCE = re.compile(r'^\s{0,3}(`{3,}|~{3,})')
 CALLOUT_START = re.compile(r'^\s{0,3}>\s*\[!(NOTE|IMPORTANT|WARNING|ASIDE)\](?:\s+(.*?))?\s*$', re.IGNORECASE)
 CALLOUT_LINE = re.compile(r'^\s{0,3}> ?(.*)$')
 
@@ -197,10 +217,6 @@ def render_body(p: Page) -> None:
     p.headings = env.get('headings', [])
     p.mermaid, p.math = '<pre class="mermaid">' in h, 'class="math"' in h
 
-    # footnote bodies feed the hover popups (minus the back link)
-    p.notes = [(n, re.sub(r' <a href="#fnref-[^"]*" class="fnback"[^<]*</a>', '', body))
-               for n, body in re.findall(r'<li id="fn-(\d+)">(.*?)</li>', h, re.DOTALL)]
-
     # previews: '' -> (title, description); heading id -> (heading, first
     # paragraph). Taken before the sidenotes go in, so no note text leaks in.
     pv: dict[str, Preview] = {'': (p.title, p.description)}
@@ -211,15 +227,6 @@ def render_body(p: Page) -> None:
         pv[hd.id] = (hd.text, clip(plain(m.group(1)).strip(), 240) if m else '')
     if is_glossary(p.slug):
         h = define_terms(p, h, pv)
-
-    # a sidenote after each note's first ref, shown in the margin when wide
-    # (style.css). Notes with block content stay popup + endnote only.
-    for n, body in p.notes:
-        if re.search(r'<(pre|ul|ol|div|blockquote|table)\b', body):
-            continue
-        inner = re.sub(r'</p>\s*<p>', '<br>', body.strip()).removeprefix('<p>').removesuffix('</p>')
-        at = h.find('</sup>', h.find(f'<sup class="fn" id="fnref-{n}">')) + 6
-        h = f'{h[:at]}<span class="sn"><b>{n}</b> {inner}</span>{h[at:]}'
     p.html = h
     p.pv = pv
     p.ids = {html.unescape(i) for i in re.findall(r'\sid="([^"]*)"', h)}

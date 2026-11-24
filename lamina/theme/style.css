@@ -189,8 +189,7 @@ dialog.image-zoom {
 	background: var(--bg); color: var(--fg); border: 1px solid var(--rule);
 	padding: 1rem; max-width: calc(100vw - 4rem); max-height: calc(100dvh - 4rem);
 }
-dialog.image-zoom:modal { overscroll-behavior: contain; }
-dialog.image-zoom::backdrop { background: rgb(0 0 0 / .75); overflow: hidden; overscroll-behavior: contain; }
+dialog.image-zoom::backdrop { background: rgb(0 0 0 / .75); }
 dialog.image-zoom img { display: block; width: auto; height: auto; max-height: calc(100dvh - 8rem); margin: auto; }
 dialog.image-zoom.full-size { width: calc(100vw - 4rem); }
 dialog.image-zoom.full-size img { max-width: none; max-height: none; }
@@ -202,6 +201,7 @@ dialog.image-zoom button {
 	padding: .5rem .75rem;
 	font: inherit; color: var(--fg); background: var(--code-bg); border: 1px solid var(--rule); cursor: pointer;
 }
+html:has(dialog.image-zoom[open]) { overflow: hidden; }
 
 /* Corrections: struck text stays readable as history; the inline fix is muted,
    not underlined (underline reads as a link). */

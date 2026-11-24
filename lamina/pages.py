@@ -97,7 +97,7 @@ def discover(root: Path, site: Site) -> list[Page]:
             pinned.add(slug)
     return pages
 
-FNREF = re.compile(r'<sup class="fn"[^>]*>.*?</sup>|<span class="aside">(?:<span\b[^>]*>.*?</span>|.)*?</span>', re.DOTALL)
+FNREF = re.compile(r'<sup class="fn"[^>]*>.*?</sup>|<span class="aside">.*?</span>', re.DOTALL)
 
 def plain(h: str) -> str:
     """Rendered HTML as text for descriptions and previews: tags, footnote refs, and asides dropped."""
@@ -107,20 +107,15 @@ FENCE = re.compile(r'^\s{0,3}(`{3,}|~{3,})')
 
 def fenced(lines: Iterable[str]) -> Iterator[tuple[str, bool]]:
     """(line, inside a code fence) for each line; the fences count as inside."""
-    close: re.Pattern[str] | None = None
+    fence = ''
     for ln in lines:
-        if close is None:
-            if f := FENCE.match(ln):
-                ch = f.group(1)
-                if ch[0] != '`' or '`' not in ln[f.end():]:
-                    close = re.compile(rf'^\s{{0,3}}{ch[0]}{{{len(ch)},}}\s*$')
-                    yield ln, True
-                    continue
-            yield ln, False
-        else:
-            if close.match(ln):
-                close = None
-            yield ln, True
+        f = FENCE.match(ln)
+        inside = bool(fence)
+        if f and not fence:
+            fence = f.group(1)
+        elif f and f.group(1).startswith(fence) and not ln[f.end():].strip():
+            fence = ''   # only a bare fence at least as long as the opening one closes it
+        yield ln, inside or bool(fence)
 
 def parse(p: Page) -> str:
     """Set the page's title from its first `# ` line; return the rest as its body."""

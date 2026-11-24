@@ -250,7 +250,6 @@
     if (!zoom) {
       zoom = doc.createElement('dialog');
       zoom.className = 'image-zoom';
-      zoom.setAttribute('closedby', 'any');
       var controls = doc.createElement('div');
       controls.className = 'zoom-controls';
       zoomSize = doc.createElement('button');
@@ -265,12 +264,7 @@
       zoomImage = doc.createElement('img');
       controls.append(zoomSize, close);
       zoom.append(controls, zoomImage);
-      if (!('closedBy' in HTMLDialogElement.prototype)) {
-        zoom.addEventListener('click', function (e) {
-          var r = zoom.getBoundingClientRect();
-          if (e.target === zoom && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)) zoom.close();
-        });
-      }
+      zoom.addEventListener('click', function (e) { if (e.target === zoom) zoom.close(); });
       zoom.addEventListener('close', function () { zoomFrom.focus({ preventScroll: true }); });
       doc.body.appendChild(zoom);
     }

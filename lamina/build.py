@@ -61,13 +61,12 @@ FN_BACK = re.compile(r' <a href="#fnref-[^"]*" class="fnback"[^<]*</a>')
 class PageRefs(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
-        self.links: list[str] = []
+        self.links: set[str] = set()
         self.media: set[str] = set()
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        a = dict(attrs)
-        if tag == 'a' and (href := a.get('href')) is not None and 'heading-link' not in (a.get('class') or '').split():
-            self.links.append(href)
+        if tag == 'a':
+            self.links.update(value for key, value in attrs if value and key == 'href')
         elif tag in ('img', 'audio', 'video', 'source'):
             self.media.update(value for key, value in attrs if value and
                               (key == 'src' or (tag == 'video' and key == 'poster')))
@@ -76,36 +75,22 @@ def check_refs(p: Page, ctx: Ctx, out: Path) -> None:
     """Check local links, anchors, and media against the finished output, including static/."""
     refs = PageRefs()
     refs.feed(p.html)
-    for href in dict.fromkeys(refs.links):
-        u = urllib.parse.urlsplit(href)
+    for url in sorted(refs.links | refs.media):
+        u = urllib.parse.urlsplit(url)
         if u.scheme or u.netloc:
             continue
-        raw, anchor = urllib.parse.unquote(u.path), urllib.parse.unquote(u.fragment)
-        if not raw and not anchor:
-            warn(f'{p.src.name}: dead link {href}')
-            continue
-        if not raw:
-            tp: Page | None = p
-        else:
-            if '..' in Path(raw).parts:
-                warn(f'{p.src.name}: dead link {href}')
+        tp: Page | None = p
+        if u.path:
+            f = out / posixpath.normpath('/' + urllib.parse.unquote(u.path)).lstrip('/')
+            if f.is_dir():
+                f = f / 'index.html'
+            if not f.is_file():
+                warn(f'{p.src.name}: dead {"link" if url in refs.links else "media source"} {url}')
                 continue
-            rel = posixpath.normpath('/' + raw).lstrip('/')
-            target = out / rel / 'index.html' if raw.endswith('/') or not rel else out / rel
-            if not target.is_file():
-                warn(f'{p.src.name}: dead link {href}')
-                continue
-            tp = ctx.by_out.get(target.relative_to(out).as_posix())
-        if anchor and tp is not None and anchor not in tp.pv and anchor not in tp.ids:
-            warn(f'{p.src.name}: dead anchor {href}')
-    for url in sorted(refs.media):
-        u = urllib.parse.urlsplit(url)
-        if u.scheme or u.netloc or not u.path:
-            continue
-        raw = urllib.parse.unquote(u.path)
-        path = posixpath.normpath('/' + raw).lstrip('/')
-        if '..' in Path(raw).parts or not (out / path).is_file():
-            warn(f'{p.src.name}: dead media source {url}')
+            tp = ctx.by_out.get(f.relative_to(out).as_posix())
+        anchor = urllib.parse.unquote(u.fragment)
+        if anchor and tp and anchor not in tp.pv and anchor not in tp.ids:
+            warn(f'{p.src.name}: dead anchor {url}')
 
 def decorate(p: Page, ctx: Ctx) -> None:
     """Resolve the page's wikilinks, attach popups, inject sidenotes, and build the TOC."""

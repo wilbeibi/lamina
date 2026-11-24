@@ -1,15 +1,15 @@
 # lamina site config. Categories are directories under pages/; the first one is
 # the landing page. Everything else has a default.
 # A page's language comes from its text (mostly CJK: zh, else en), not its category.
-# Math uses Temml automatically; self-host with temml.min.js, Temml-Local.css
-# and Temml.woff2 in theme/.
+# Math uses Temml automatically (with SRI from the CDN); self-host with
+# temml.min.js, Temml-Local.css and Temml.woff2 in theme/.
 # Mermaid fences use pele 1.10.0; update self-hosted theme/pele.global.js separately.
-# Image zoom and local media checks are automatic.
-# Code copying, heading permalinks and table sorting need no settings.
+# Image zoom and local link/media checks are automatic.
+# Code copying, heading permalinks and keyboard-accessible table sorting need no settings.
 # Labelled code fences use local Prism highlighting; unknown languages stay plain.
 # Subtle Copy text sits in each code block's top-right corner and briefly shows Copied.
 # Table footnotes use popups at every width; clicking a reference shows its endnote.
-# Sorting ignores annotations; math previews use the page's global TeX macros.
+# Sorting ignores annotations and tfoot rows; math previews use the page's global TeX macros.
 name = "lamina"
 description = "an example site showing every lamina feature"
 url = "https://lamina-demo.pages.dev" # the live build of this example site

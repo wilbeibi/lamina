@@ -13,11 +13,15 @@ from .config import THEME, WARNINGS, Category, Site, die, load_site, warn
 from .links import LINKS_FILE, read_links
 from .pages import Page, discover, is_glossary, render_body, stamps
 
-# pinned on purpose: a page that uses math or mermaid loads these from the CDN,
-# unless the site keeps its own copy in theme/ under the URL's file name
+# pinned on purpose: a page that uses math or mermaid loads these from the CDN with SRI,
+# unless the site keeps its own copy in theme/ under the URL's file name.
+# Recompute an SRI digest: curl -fsSL <URL> | openssl dgst -sha384 -binary | openssl base64 -A
 TEMML_URL = 'https://cdn.jsdelivr.net/npm/temml@0.14.0/dist/temml.min.js'
+TEMML_SRI = 'sha384-qJQ7P+DRhXNyeli+ZThz25Ds5LRfplio0XuymYx3/9Nbv/tDev8QyVPrCYQONe+r'
 TEMML_CSS_URL = 'https://cdn.jsdelivr.net/npm/temml@0.14.0/dist/Temml-Local.css'
+TEMML_CSS_SRI = 'sha384-wrAonPpTrJ/7uzMC8LnKSeFSXi7NiAzdpkDAI+GD2Y5mFH9JFCJdHlscsQRFVr7x'
 PELE_URL = 'https://cdn.jsdelivr.net/npm/pele@1.10.0/dist/pele.global.js'
+PELE_SRI = 'sha384-zwGYZK+/MVuyfItMWj4MERk2omW/eWEDLBEwuzSJd289OrEFwsdwQe+EqwJacKaA'
 
 class Ctx:
     """Everything decorate() and the templates need to know about the whole site."""
@@ -208,9 +212,13 @@ def theme_file(root: Path, name: str) -> Path | None:
             return base / name
     return None
 
-def lib_src(ctx: Ctx, url: str) -> str:
-    """Where a page loads a library asset from: the site's theme/ copy, else the CDN."""
-    return ctx.assets.get(url.rsplit('/', 1)[1], url)
+def lib_tag(ctx: Ctx, url: str, sri: str, script: bool = True) -> str:
+    """Load a library from theme/ when self-hosted, else from the CDN with SRI."""
+    local = ctx.assets.get(url.rsplit('/', 1)[1])
+    attrs = '' if local else f' integrity="{sri}" crossorigin="anonymous" referrerpolicy="no-referrer"'
+    if script:
+        return f'<script defer src="{local or url}"{attrs}></script>'
+    return f'<link rel="stylesheet" href="{local or url}"{attrs}>'
 
 def tpl(ctx: Ctx, name: str) -> str:
     f = theme_file(ctx.root, name)
@@ -269,9 +277,8 @@ def page_html(p: Page, ctx: Ctx) -> str:
     site = ctx.site
     nav, alt = langnav(p, ctx)
     head = [alt, feed_link(ctx),
-            (f'<link rel="stylesheet" href="{lib_src(ctx, TEMML_CSS_URL)}">\n'
-             f'<script defer src="{lib_src(ctx, TEMML_URL)}"></script>') if p.math else '',
-            f'<script defer src="{lib_src(ctx, PELE_URL)}"></script>' if p.mermaid else '',
+            f'{lib_tag(ctx, TEMML_CSS_URL, TEMML_CSS_SRI, False)}\n{lib_tag(ctx, TEMML_URL, TEMML_SRI)}' if p.math else '',
+            lib_tag(ctx, PELE_URL, PELE_SRI) if p.mermaid else '',
             f'<script defer src="{ctx.assets["prism.js"]}" data-manual></script>' if '<code class="language-' in p.html else '',
             f'<script defer src="{ctx.assets["lamina.js"]}"></script>']
     footer = [f'<a href="{href_of(p.cat)}">← {html.escape(p.cat.title)}</a>',

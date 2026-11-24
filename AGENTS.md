@@ -33,13 +33,14 @@ Check monthly, bump one source at a time, and commit each bump separately.
   `~=` range in pyproject.toml only for a release outside it). A new ty or
   ruff may add findings; `make lint`.
 - Pele, Temml: `npm view pele version`, `npm view temml version`; bump the
-  URLs at the top of `lamina/build.py` (Temml's JS and CSS share a version).
+  URLs and `*_SRI` digests at the top of `lamina/build.py` (Temml's JS and CSS
+  share a version).
   Read the changelog first: pele follows a Mermaid syntax release, Temml's
   0.x minors change MathML output.
 - Prism: `npm view prismjs version`; rebuild `lamina/theme/prism.js` as its
   header says, same components, header version updated.
 - Verify: snapshot `example/public` and `~/dump/public` before, `make`, and
-  `diff -r`. A browser-lib bump changes only its URL or `prism.js`; a Python
+  `diff -r`. A browser-lib bump changes only its URL/SRI or `prism.js`; a Python
   bump must leave pages byte-identical or explain each differing line. Then look
   at code, the diagram and math on the example page, light and dark.
 - Sites that self-host a library in `theme/` keep their old copy; name the

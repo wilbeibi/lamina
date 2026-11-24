@@ -43,7 +43,23 @@
     css: function (name, el) { return getComputedStyle(el || doc.documentElement).getPropertyValue(name).trim(); }
   };
 
+  // ---- live status announcer for copy and sort ---------------------------
+  var statusEl = null, statusTimer = null, lastStatus = '';
+  function announce(msg) {
+    if (!statusEl) {
+      statusEl = doc.createElement('div');
+      statusEl.className = 'sr-only';
+      statusEl.setAttribute('role', 'status');
+      doc.body.appendChild(statusEl);
+    }
+    clearTimeout(statusTimer);
+    if (msg === lastStatus) msg += '\u00a0';
+    lastStatus = statusEl.textContent = msg;
+    statusTimer = setTimeout(function () { statusEl.textContent = ''; }, 2000);
+  }
+
   // ---- 1. sortable tables ------------------------------------------------
+  var collator = window.Intl && Intl.Collator ? new Intl.Collator(lang, { numeric: true, sensitivity: 'base' }) : null;
   function num(s) {
     var m = s.trim().match(/^([+-]?\$?|\$[+-]?)((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)\s*([KMB]|%)?$/i);
     if (!m) return null;
@@ -54,16 +70,21 @@
   doc.querySelectorAll('article table').forEach(function (table) {
     var head = table.rows[0];
     if (!head || table.rows.length < 3) return;
-    var body = table.tBodies[0] || table;
+    var body = table.tBodies[0] || table, dataStart = head.parentNode === body ? 1 : 0;
+    if (body.rows.length - dataStart < 2) return;
+    var move = 'moveBefore' in body;
     Array.prototype.forEach.call(head.cells, function (th, col) {
-      if (th.tagName !== 'TH') return;
-      th.style.cursor = 'pointer';
-      th.title = lang === 'zh' ? '点击排序' : 'click to sort';
-      th.addEventListener('click', function () {
+      if (th.tagName !== 'TH' || th.querySelector('a, button')) return;
+      var btn = doc.createElement('button');
+      btn.type = 'button';
+      btn.className = 'th-sort';
+      while (th.firstChild) btn.appendChild(th.firstChild);
+      th.appendChild(btn);
+      btn.addEventListener('click', function () {
         var dir = th.getAttribute('aria-sort') === 'ascending' ? -1 : 1;
         Array.prototype.forEach.call(head.cells, function (h) { h.removeAttribute('aria-sort'); });
         th.setAttribute('aria-sort', dir === 1 ? 'ascending' : 'descending');
-        var rows = Array.prototype.slice.call(table.rows, 1).filter(function (r) { return r.parentNode !== table.tHead; });
+        var rows = Array.prototype.slice.call(body.rows, dataStart);
         var values = rows.map(function (row) {
           var cell = row.cells[col] ? row.cells[col].cloneNode(true) : doc.createElement('td');
           cell.querySelectorAll('sup.fn, .sn, .aside').forEach(function (note) { note.remove(); });
@@ -75,9 +96,15 @@
           if (nx !== null && ny !== null) return (nx - ny) * dir;
           if (nx !== null) return -1;
           if (ny !== null) return 1;
-          return a.text.localeCompare(b.text, lang) * dir;
+          return (collator ? collator.compare(a.text, b.text) : a.text.localeCompare(b.text, lang)) * dir;
         });
-        values.forEach(function (v) { body.appendChild(v.row); });
+        values.forEach(function (v) {
+          if (move) body.moveBefore(v.row, null);
+          else body.appendChild(v.row);
+        });
+        var colName = (btn.textContent || '').trim();
+        announce(lang === 'zh' ? '按 ' + colName + (dir === 1 ? ' 升序排列' : ' 降序排列')
+          : 'Sorted by ' + colName + (dir === 1 ? ', ascending' : ', descending'));
       });
     });
   });
@@ -85,6 +112,10 @@
   if (window.Prism) doc.querySelectorAll('article pre > code').forEach(function (code) {
     var language = Prism.util.getLanguage(code);
     if (Prism.languages[language]) Prism.highlightElement(code);
+  });
+
+  doc.querySelectorAll('article pre:not(.mermaid), article .t').forEach(function (el) {
+    if (el.scrollWidth > el.clientWidth && !el.hasAttribute('tabindex')) el.tabIndex = 0;
   });
 
   if (navigator.clipboard && navigator.clipboard.writeText) doc.querySelectorAll('article pre > code').forEach(function (code) {
@@ -96,24 +127,30 @@
     button.className = 'copy-code';
     var label = lang === 'zh' ? '复制' : 'Copy', reset;
     button.textContent = label;
-    button.setAttribute('aria-live', 'polite');
     button.addEventListener('click', function () {
       clearTimeout(reset);
       navigator.clipboard.writeText(code.textContent).then(function () {
-        button.textContent = lang === 'zh' ? '已复制' : 'Copied';
+        var ok = lang === 'zh' ? '已复制' : 'Copied';
+        button.textContent = ok;
+        button.setAttribute('data-state', 'ok');
+        announce(ok);
       }, function () {
-        button.textContent = lang === 'zh' ? '复制失败' : 'Copy failed';
+        var err = lang === 'zh' ? '复制失败' : 'Copy failed';
+        button.textContent = err;
+        button.setAttribute('data-state', 'err');
+        announce(err);
       }).finally(function () {
-        reset = setTimeout(function () { button.textContent = label; }, 2000);
+        reset = setTimeout(function () { button.textContent = label; button.removeAttribute('data-state'); }, 2000);
       });
     });
   });
 
   // ---- 2. hover popups ---------------------------------------------------
-  var pop = null, timer = null, anchor = null;
+  var pop = null, timer = null, anchor = null, ownDesc = false;
   function box() {
     if (pop) return pop;
     pop = doc.createElement('div');
+    pop.id = 'lamina-pop';
     pop.className = 'pop';
     pop.setAttribute('role', 'tooltip');
     pop.addEventListener('mouseenter', function () { clearTimeout(timer); });
@@ -121,17 +158,23 @@
     doc.body.appendChild(pop);
     return pop;
   }
+  function clearDesc() {
+    if (anchor && ownDesc) anchor.removeAttribute('aria-describedby');
+    ownDesc = false;
+  }
   function show(a) {
     var t = doc.getElementById(a.getAttribute('data-pop'));
     if (!t || !t.content) return;
     var sn = a.parentNode.nextElementSibling;   // footnote already visible in the margin
     if (sn && sn.className === 'sn' && sn.offsetParent) return;
+    clearDesc();
     var p = box();
-    p.innerHTML = '';
-    p.appendChild(t.content.cloneNode(true));
+    p.replaceChildren(t.content.cloneNode(true));
     math(p);
+    p.style.left = '0px';
     p.style.display = 'block';
     anchor = a;
+    if (!a.hasAttribute('aria-describedby')) { a.setAttribute('aria-describedby', p.id); ownDesc = true; }
     var r = a.getBoundingClientRect(), w = p.offsetWidth, h = p.offsetHeight;
     var left = Math.max(8, Math.min(r.left + scrollX, doc.documentElement.clientWidth - w - 8));
     var top = r.bottom + scrollY + 6;
@@ -139,7 +182,7 @@
     p.style.left = left + 'px';
     p.style.top = top + 'px';
   }
-  function hide() { clearTimeout(timer); if (pop) pop.style.display = 'none'; anchor = null; }
+  function hide() { clearTimeout(timer); clearDesc(); if (pop) pop.style.display = 'none'; anchor = null; }
   function hideSoon() { clearTimeout(timer); timer = setTimeout(hide, 220); }
   doc.querySelectorAll('[data-pop]').forEach(function (a) {
     a.removeAttribute('title');            // the popup replaces the native tooltip
@@ -249,6 +292,7 @@
     if (!zoom) {
       zoom = doc.createElement('dialog');
       zoom.className = 'image-zoom';
+      zoom.setAttribute('closedby', 'any');
       var controls = doc.createElement('div');
       controls.className = 'zoom-controls';
       zoomSize = doc.createElement('button');
@@ -263,7 +307,14 @@
       zoomImage = doc.createElement('img');
       controls.append(zoomSize, close);
       zoom.append(controls, zoomImage);
-      zoom.addEventListener('click', function (e) { if (e.target === zoom) zoom.close(); });
+      if (!('closedBy' in HTMLDialogElement.prototype)) {
+        var out = function (e) {
+          var r = zoom.getBoundingClientRect();
+          return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+        }, pressed = false;
+        zoom.addEventListener('pointerdown', function (e) { pressed = out(e); });
+        zoom.addEventListener('pointerup', function (e) { if (pressed && out(e)) zoom.close(); });
+      }
       zoom.addEventListener('close', function () { zoomFrom.focus({ preventScroll: true }); });
       doc.body.appendChild(zoom);
     }
@@ -285,7 +336,9 @@
     img.setAttribute('aria-label', (lang === 'zh' ? '放大图片' : 'Zoom image') + (img.alt ? ': ' + img.alt : ''));
     img.addEventListener('click', function () { showImage(img); });
     img.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showImage(img); }
+      if (e.key === 'Enter') { e.preventDefault(); showImage(img); }
+      else if (e.key === ' ') e.preventDefault();
     });
+    img.addEventListener('keyup', function (e) { if (e.key === ' ') showImage(img); });
   });
 })();

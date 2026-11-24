@@ -72,10 +72,9 @@ nav {
 	border-bottom: 1px solid var(--rule);
 	margin-bottom: 2rem;
 	display: flex;
-	flex-wrap: wrap;
 	justify-content: space-between;
 	align-items: baseline;
-	gap: .5rem 1rem;
+	gap: 1rem;
 }
 
 /* Two toggles share one shape: the language switch on a page (中文 · EN) and the
@@ -114,17 +113,13 @@ pre code .token:is(.function, .class-name, .tag, .attr-name, .property, .builtin
 .code-block { position: relative; margin: 1rem 0; }
 .code-block pre { margin: 0; padding-right: 5rem; }
 .copy-code {
-	position: absolute; top: .375rem; right: .5rem; min-height: 2rem; min-width: 1.5rem; padding: 0 .35rem;
+	position: absolute; top: .375rem; right: .5rem; min-height: 2rem; padding: 0 .25rem;
 	font: inherit; font-size: .75rem; color: var(--muted);
-	background: var(--code-bg); border-radius: 3px; border: 0; cursor: pointer;
+	background: var(--code-bg); border: 0; cursor: pointer;
 }
-.copy-code:hover, .copy-code:focus-visible, .copy-code[data-state] { color: var(--fg); }
+.copy-code:hover, .copy-code:focus-visible { color: var(--fg); }
 .copy-code:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 @media (pointer: coarse) { .copy-code { min-height: 2.5rem; top: .125rem; } }
-.sr-only {
-	position: absolute; clip-path: inset(50%); overflow: hidden;
-	width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; white-space: nowrap;
-}
 .heading-link { font-size: .8em; font-weight: normal; color: var(--muted); text-decoration: none; }
 .heading-link:hover, .heading-link:focus-visible { color: var(--link); }
 
@@ -174,14 +169,8 @@ table { border-collapse: collapse; width: 100%; font-size: .9rem; }
 th, td { border: 0; border-bottom: 1px solid var(--rule); padding: .4rem .6rem; text-align: left; vertical-align: top; }
 td { font-variant-numeric: tabular-nums; }
 th { background: var(--code-bg); font-weight: 600; white-space: nowrap; }
-th:has(> .th-sort) { padding: 0; }
-.th-sort {
-	display: block; width: 100%; min-height: 2rem; padding: .4rem .6rem;
-	font: inherit; color: inherit; text-align: inherit; background: none; border: 0; cursor: pointer;
-}
-.th-sort:focus-visible, .t:focus-visible, pre:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
-th[aria-sort] .th-sort::after { content: " ↑"; content: " ↑" / ""; color: var(--muted); }
-th[aria-sort="descending"] .th-sort::after { content: " ↓"; content: " ↓" / ""; }
+th[aria-sort]::after { content: " ↑"; color: var(--muted); }
+th[aria-sort="descending"]::after { content: " ↓"; }
 tbody tr:hover td, table tr:hover td { background: var(--code-bg); }
 
 summary { cursor: pointer; color: var(--muted); }

@@ -85,11 +85,7 @@ def discover(root: Path, site: Site) -> list[Page]:
             die(f'{seen[cat.index].src} and the {cat.dir} index would both build {cat.index}')
     canon = {(p.cat.dir, p.slug) for p in pages if p.canonical}
     for p in pages:
-        if p.canonical and '.' in p.slug:
-            core, suf = p.slug.rsplit('.', 1)
-            if (p.cat.dir, core) in canon:
-                die(f'{p.src}: unknown language {suf!r} (add [langs.{suf}] to site.toml)')
-        elif not p.canonical and (p.cat.dir, p.slug) not in canon:
+        if not p.canonical and (p.cat.dir, p.slug) not in canon:
             warn(f'{p.src.name}: translation without a canonical page')
     for cat in site.category:
         pinned: set[str] = set()
@@ -101,21 +97,11 @@ def discover(root: Path, site: Site) -> list[Page]:
             pinned.add(slug)
     return pages
 
-FNREF = re.compile(r'<sup class="fn"[^>]*>.*?</sup>', re.DOTALL)
-SPAN_TAG = re.compile(r'</?span\b[^>]*>')
+FNREF = re.compile(r'<sup class="fn"[^>]*>.*?</sup>|<span class="aside">(?:<span\b[^>]*>.*?</span>|.)*?</span>', re.DOTALL)
 
 def plain(h: str) -> str:
     """Rendered HTML as text for descriptions and previews: tags, footnote refs, and asides dropped."""
-    h = FNREF.sub('', h)
-    while (start := h.find('<span class="aside">')) >= 0:
-        depth, end = 0, len(h)
-        for m in SPAN_TAG.finditer(h, start):
-            depth += -1 if m.group(0).startswith('</') else 1
-            if depth == 0:
-                end = m.end()
-                break
-        h = h[:start] + h[end:]
-    return html.unescape(TAG.sub('', h))
+    return html.unescape(TAG.sub('', FNREF.sub('', h)))
 
 FENCE = re.compile(r'^\s{0,3}(`{3,}|~{3,})')
 

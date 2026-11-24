@@ -129,7 +129,7 @@ Features that turn on when a page uses them:
 
 | Source | Result |
 |---|---|
-| pipe table | click or activate a header button to sort ascending, then descending; scrolls inside the column |
+| pipe table | click a header to sort ascending, then descending; scrolls inside the column |
 | fenced or indented code | subtle Copy text in the top-right corner on HTTPS or localhost |
 | language-labelled code fence | syntax highlighting with bundled Prism |
 | image outside a link or button | click, Enter, or Space to enlarge; Escape, Close, or backdrop to dismiss |
@@ -141,7 +141,7 @@ Features that turn on when a page uses them:
 
 Image zoom fits the screen initially. Choose Full size to inspect the original image and scroll across large figures.
 
-The Copy text briefly changes to Copied and announces the result to assistive tech.
+The Copy text briefly changes to Copied after copying.
 
 Label code fences with `python`, `bash` (`sh`, `shell`), `javascript` (`js`),
 `typescript` (`ts`), `markup` (`html`, `xml`, `svg`), `css`, `json`, `yaml` (`yml`),
@@ -150,18 +150,18 @@ Unlabelled or unsupported languages stay plain; without JavaScript, all code sta
 Mermaid fences still render as diagrams.
 
 Table sorting recognizes complete numbers, optional signs, `$`, comma grouping, and a `K`/`M`/`B` or `%` suffix.
-Signs can precede or follow `$` (`-$2` or `$-2`). Footnotes, asides, and `<tfoot>` rows do not affect the sort.
-Percentages sort by their displayed number. Numbers precede text in both directions; dates and mixed labels sort with natural collation.
+Signs can precede or follow `$` (`-$2` or `$-2`). Footnotes and asides do not affect the sort value.
+Percentages sort by their displayed number. Numbers precede text in both directions; dates and mixed labels sort as text.
 Inline dollar math cannot cross a backtick; use display math for TeX containing literal backticks.
 
-Pele (Mermaid syntax) and Temml load from pinned jsDelivr URLs with Subresource Integrity (`sha384-`) and `no-referrer`, only on pages that use them.
-The default Pele version is 1.10.0; self-hosted copies omit the CDN hash and must be updated separately.
+Pele (Mermaid syntax) and Temml load from pinned jsDelivr URLs, only on pages that use them.
+The default Pele version is 1.10.0; self-hosted copies must be updated separately.
 Math uses local system fonts, supplemented by Temml's small font file.
 Page-defined global TeX macros also work in footnote previews.
 TeX stays visible without JavaScript.
 
 To self-host, save `pele.global.js`, `temml.min.js`, `Temml-Local.css`, and `Temml.woff2` in `theme/`.
-The URLs and SRI digests are at the top of `lamina/build.py`.
+The URLs are at the top of `lamina/build.py`.
 The font sits beside the Temml CSS at the same URL prefix.
 Keep the CSS and font together; pages then load the site's copies.
 
@@ -195,7 +195,7 @@ two on one paragraph.
 
 ## Theme
 
-System fonts, light and dark by OS setting (`color-scheme: light dark`), OS text-scale opt-in (`<meta name="text-scale" content="scale">`), balanced headings, and `text-wrap: pretty` prose. Put a file named `style.css`,
+System fonts, light and dark by OS setting. Put a file named `style.css`,
 `lamina.js`, `prism.js`, `favicon.svg`, `page.html`, `index.html`, `index-item.html`,
 `atom.xml`, or `atom-item.xml` in `theme/` to replace the built-in one;
 `theme/site.css` is appended to the stylesheet and `theme/site.js` to

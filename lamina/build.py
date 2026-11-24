@@ -13,15 +13,11 @@ from .config import THEME, WARNINGS, Category, Site, die, load_site, warn
 from .links import LINKS_FILE, read_links
 from .pages import Page, discover, is_glossary, render_body, stamps
 
-# pinned on purpose: a page that uses math or mermaid loads these from the CDN with SRI,
-# unless the site keeps its own copy in theme/ under the URL's file name.
-# Recompute an SRI digest: curl -fsSL <URL> | openssl dgst -sha384 -binary | openssl base64 -A
+# pinned on purpose: a page that uses math or mermaid loads these from the CDN,
+# unless the site keeps its own copy in theme/ under the URL's file name
 TEMML_URL = 'https://cdn.jsdelivr.net/npm/temml@0.14.0/dist/temml.min.js'
-TEMML_SRI = 'sha384-qJQ7P+DRhXNyeli+ZThz25Ds5LRfplio0XuymYx3/9Nbv/tDev8QyVPrCYQONe+r'
 TEMML_CSS_URL = 'https://cdn.jsdelivr.net/npm/temml@0.14.0/dist/Temml-Local.css'
-TEMML_CSS_SRI = 'sha384-wrAonPpTrJ/7uzMC8LnKSeFSXi7NiAzdpkDAI+GD2Y5mFH9JFCJdHlscsQRFVr7x'
 PELE_URL = 'https://cdn.jsdelivr.net/npm/pele@1.10.0/dist/pele.global.js'
-PELE_SRI = 'sha384-zwGYZK+/MVuyfItMWj4MERk2omW/eWEDLBEwuzSJd289OrEFwsdwQe+EqwJacKaA'
 
 class Ctx:
     """Everything decorate() and the templates need to know about the whole site."""
@@ -61,10 +57,6 @@ WL_RE = re.compile(r'<x-wikilink data-target="([^"]*)">(.*?)</x-wikilink>', re.D
 FN_OL = re.compile(r'<section class="footnotes"><ol>(.*)</ol></section>\s*$', re.DOTALL)
 FN_LI = re.compile(r'<li id="fn-(\d+)">(.*?)</li>(?=\s*(?:<li id="fn-\d+">|$))', re.DOTALL)
 FN_BACK = re.compile(r' <a href="#fnref-[^"]*" class="fnback"[^<]*</a>')
-UNSAFE_URL = re.compile(r'[\s"#%?\\]')
-
-def quote_path(s: str) -> str:
-    return UNSAFE_URL.sub(lambda m: f'%{ord(m.group(0)):02X}', s)
 
 class PageRefs(HTMLParser):
     def __init__(self) -> None:
@@ -145,7 +137,7 @@ def decorate(p: Page, ctx: Ctx) -> None:
         if tp is None or (anchor and anchor not in tp.pv):
             warn(f'{p.src.name}: unresolved wikilink [[{target}]]')
             return f'<span class="wl-missing">{label}</span>'
-        href = ('' if tp is p else html.escape(quote_path(tp.out), quote=True)) + (f'#{urllib.parse.quote(anchor)}' if anchor else '')
+        href = ('' if tp is p else tp.out) + (f'#{urllib.parse.quote(anchor)}' if anchor else '')
         pid = popfor(tp, anchor)
         pop_attr = f' data-pop="{pid}"' if pid else ''
         return f'<a href="{href}" class="wl"{pop_attr}>{label}</a>'
@@ -212,13 +204,9 @@ def theme_file(root: Path, name: str) -> Path | None:
             return base / name
     return None
 
-def lib_tag(ctx: Ctx, url: str, sri: str, script: bool = True) -> str:
-    """Load a library from theme/ when self-hosted, else from the CDN with SRI."""
-    local = ctx.assets.get(url.rsplit('/', 1)[1])
-    attrs = '' if local else f' integrity="{sri}" crossorigin="anonymous" referrerpolicy="no-referrer"'
-    if script:
-        return f'<script defer src="{local or url}"{attrs}></script>'
-    return f'<link rel="stylesheet" href="{local or url}"{attrs}>'
+def lib_src(ctx: Ctx, url: str) -> str:
+    """Where a page loads a library asset from: the site's theme/ copy, else the CDN."""
+    return ctx.assets.get(url.rsplit('/', 1)[1], url)
 
 def tpl(ctx: Ctx, name: str) -> str:
     f = theme_file(ctx.root, name)
@@ -232,7 +220,7 @@ def render(t: str, values: Mapping[str, object]) -> str:
 SEP = '<span class="sep">·</span>'
 
 def href_of(cat: Category) -> str:
-    return '/' if cat.index == 'index.html' else f'/{html.escape(quote_path(cat.index), quote=True)}'
+    return '/' if cat.index == 'index.html' else f'/{cat.index}'
 
 def newest(pages: Iterable[Page]) -> list[Page]:
     return sorted(pages, key=lambda p: (p.date, p.src.name), reverse=True)
@@ -251,21 +239,18 @@ def langnav(p: Page, ctx: Ctx) -> tuple[str, str]:
     alt = ''
     if len(langs) > 1:
         for lang in langs:
-            raw_name = L[lang].name
-            name = html.escape(raw_name)
+            name = L[lang].name
             if lang == p.lang:
                 parts.append(f'<strong>{name}</strong>')
             elif lang in versions:
-                out_href = html.escape(quote_path(versions[lang].out), quote=True)
-                parts.append(f'<a href="{out_href}" hreflang="{lang}">{name}</a>')
+                parts.append(f'<a href="{versions[lang].out}" hreflang="{lang}">{name}</a>')
             else:
-                miss = L[p.lang].missing.format(name=raw_name)
+                miss = L[p.lang].missing.format(name=name)
                 parts.append(f'<span class="off" title="{html.escape(miss, quote=True)}">{name}</span>')
         canon = next((v for v in versions.values() if v.canonical), None)
         if len(versions) > 1 and canon:
-            alt = ''.join(f'<link rel="alternate" hreflang="{lang}" href="/{html.escape(quote_path(versions[lang].out), quote=True)}">'
-                          for lang in langs if lang in versions)
-            alt += f'<link rel="alternate" hreflang="x-default" href="/{html.escape(quote_path(canon.out), quote=True)}">'
+            alt = ''.join(f'<link rel="alternate" hreflang="{lang}" href="/{versions[lang].out}">' for lang in langs if lang in versions)
+            alt += f'<link rel="alternate" hreflang="x-default" href="/{canon.out}">'
     nav = f'<span class="langnav">{SEP.join(parts)}</span>' if parts else ''
     return nav, alt
 
@@ -277,14 +262,15 @@ def page_html(p: Page, ctx: Ctx) -> str:
     site = ctx.site
     nav, alt = langnav(p, ctx)
     head = [alt, feed_link(ctx),
-            f'{lib_tag(ctx, TEMML_CSS_URL, TEMML_CSS_SRI, False)}\n{lib_tag(ctx, TEMML_URL, TEMML_SRI)}' if p.math else '',
-            lib_tag(ctx, PELE_URL, PELE_SRI) if p.mermaid else '',
+            (f'<link rel="stylesheet" href="{lib_src(ctx, TEMML_CSS_URL)}">\n'
+             f'<script defer src="{lib_src(ctx, TEMML_URL)}"></script>') if p.math else '',
+            f'<script defer src="{lib_src(ctx, PELE_URL)}"></script>' if p.mermaid else '',
             f'<script defer src="{ctx.assets["prism.js"]}" data-manual></script>' if '<code class="language-' in p.html else '',
             f'<script defer src="{ctx.assets["lamina.js"]}"></script>']
     footer = [f'<a href="{href_of(p.cat)}">← {html.escape(p.cat.title)}</a>',
               '<a href="/atom.xml">atom</a>' if ctx.feed else '', site.footer]
     return render(tpl(ctx, 'page.html'), {
-        'lang': p.lang, 'style': ctx.assets['style.css'], 'site_name': html.escape(site.name, quote=True), 'title': html.escape(p.title),
+        'lang': p.lang, 'style': ctx.assets['style.css'], 'site_name': html.escape(site.name), 'title': html.escape(p.title),
         'description': html.escape(p.description, quote=True), 'head': '\n'.join(x for x in head if x),
         'nav': nav, 'meta': p.meta, 'toc': p.toc, 'content': p.html, 'pops': p.pops,
         'footer': ' · '.join(x for x in footer if x),
@@ -297,7 +283,7 @@ def index_html(cat: Category, ctx: Ctx) -> str:
     items += newest(p for slug, p in pages.items() if slug not in cat.pinned)
     pin = f'<span role="img" aria-label="{html.escape(site.langs[cat.lang].pinned, quote=True)}">📌</span> '
     item_t = tpl(ctx, 'index-item.html')
-    lis = ''.join(render(item_t, {'date': p.date, 'href': html.escape(quote_path(p.out), quote=True), 'title': html.escape(p.title),
+    lis = ''.join(render(item_t, {'date': p.date, 'href': p.out, 'title': html.escape(p.title),
                                   'lang': '' if p.lang == cat.lang else f' lang="{p.lang}"',
                                   'pin': pin if p.slug in cat.pinned else '',
                                   'description': html.escape(p.description, quote=True)}) for p in items)
@@ -315,7 +301,7 @@ def index_html(cat: Category, ctx: Ctx) -> str:
     title = html.escape(site.name) if cat is first else f'{html.escape(cat.title)} — {html.escape(site.name)}'
     desc = cat.description or (site.description if cat is first else '')
     return render(tpl(ctx, 'index.html'), {
-        'lang': cat.lang, 'style': ctx.assets['style.css'], 'site_name': html.escape(site.name, quote=True), 'title': title,
+        'lang': cat.lang, 'style': ctx.assets['style.css'], 'site_name': html.escape(site.name), 'title': title,
         'description': html.escape(desc, quote=True), 'head': feed_link(ctx),
         'secnav': secnav, 'items': lis, 'footer': footer,
         'brand': f'<strong>{html.escape(site.name)}</strong>' if at_root else f'<a href="/">{html.escape(site.name)}</a>',
@@ -328,7 +314,7 @@ def atom_xml(ctx: Ctx) -> str:
     item_t = tpl(ctx, 'atom-item.xml')
     items = ''.join(render(item_t, {
         'title': html.escape(p.title), 'updated': p.atom_updated,
-        'url': html.escape(f'{url}/' if p.out == 'index.html' else f'{url}/{quote_path(p.out)}', quote=True),
+        'url': html.escape(f'{url}/' if p.out == 'index.html' else f'{url}/{p.out}', quote=True),
         'summary': html.escape(p.description)}) for p in entries)
     updated = max((p.atom_updated for p in entries), default='1970-01-01T00:00:00Z')
     return render(tpl(ctx, 'atom.xml'), {

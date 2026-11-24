@@ -14,19 +14,18 @@ directory. SKILL.md in the repository is the reference.
 Set pinned = ["slug", ...] in a site.toml category to pin notes in that order.
 Pinned notes show 📌 before their titles. The Atom feed stays chronological.
 
-Math uses Temml (MathML), Mermaid diagrams pele; both load only where used, with
-Subresource Integrity when served from the CDN. To self-host, put temml.min.js,
-Temml-Local.css, Temml.woff2 and pele.global.js in theme/.
+Math uses Temml (MathML), Mermaid diagrams pele; both load only where used. To
+self-host, put temml.min.js, Temml-Local.css, Temml.woff2 and pele.global.js in theme/.
 Pele defaults to 1.10.0; update self-hosted copies separately.
 Pages load CSS and JS at content-hashed addresses, so caches never serve stale copies.
 Unlinked images open in a zoom dialog. Missing local links and media warn at build time.
 On HTTPS or localhost, code blocks have subtle Copy text in the top-right corner.
-Copying briefly shows Copied and announces status. Headings h2-h4 have permalinks.
+Copying briefly shows Copied. Headings h2-h4 have permalinks.
 Labelled code fences use bundled Prism: Python, Bash, JS/TS, HTML/XML, CSS,
 JSON, YAML, SQL, Go, Rust and TOML. Unknown languages stay plain; no CDN or settings.
 Table footnotes use popups at every width. Click a reference to show its endnote.
-Tables sort complete numbers numerically and other values with natural collation, ascending first.
-Sorting uses header buttons, ignores annotations, and accepts -$2 or $-2; math previews share page macros.
+Tables sort complete numbers numerically and other values as text, ascending first.
+Sorting ignores annotations and accepts -$2 or $-2; math previews share page macros.
 """
 import argparse
 import functools
@@ -50,18 +49,10 @@ class QuietHandler(http.server.SimpleHTTPRequestHandler):
 PORT = 8471   # off the beaten track, so it never collides with another dev server
 
 def signature(root: Path) -> int:
-    """Hash of paths, mtimes, and sizes across everything a build reads."""
+    """Hash of paths and mtimes across everything a build reads."""
     files = [root / 'site.toml', root / LINKS_FILE,
              *(f for d in (root / 'pages', root / 'theme', root / 'static', THEME) for f in d.rglob('*'))]
-    state: list[tuple[str, int, int]] = []
-    for f in files:
-        try:
-            if f.is_file():
-                st = f.stat()
-                state.append((str(f), st.st_mtime_ns, st.st_size))
-        except OSError:
-            continue
-    return hash(tuple(sorted(state)))
+    return hash(tuple((str(f), f.stat().st_mtime_ns) for f in files if f.is_file()))
 
 def cmd_serve(root: Path) -> None:
     out = build(root)

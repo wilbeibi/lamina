@@ -29,9 +29,14 @@ wrangler pages deploy example/public --project-name lamina-demo --branch main \
 
 Check monthly, bump one source at a time, and commit each bump separately.
 
-- Python: `uv tree --outdated --depth 1`, then `uv lock --upgrade` (widen a
-  `~=` range in pyproject.toml only for a release outside it). A new ty or
-  ruff may add findings; `make lint`.
+- Python: Dependabot (`.github/dependabot.yml`) opens one pull request per
+  package on the first of the month. `.github/workflows/deps.yml` merges one
+  that passes `make lint` and leaves `example/public` byte-identical; any
+  other waits for you. It cannot build `~/dump`: diff that after pulling.
+  By hand: `uv tree --outdated --depth 1`, then
+  `uv lock --upgrade-package <name>` (widen a `~=` range in pyproject.toml
+  only for a release outside it). A new ty or ruff may add findings;
+  `make lint`.
 - Pele, Temml: `npm view pele version`, `npm view temml version`; bump the
   URLs at the top of `lamina/build.py` (Temml's JS and CSS share a version).
   Read the changelog first: pele follows a Mermaid syntax release, Temml's

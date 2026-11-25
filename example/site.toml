@@ -3,7 +3,7 @@
 # A page's language comes from its text (mostly CJK: zh, else en), not its category.
 # Math uses Temml automatically; self-host with temml.min.js, Temml-Local.css
 # and Temml.woff2 in theme/.
-# Mermaid fences use pele 1.10.0; update self-hosted theme/pele.global.js separately.
+# Mermaid fences use pele 1.13.0; update self-hosted theme/pele.global.js separately.
 # Image zoom and local link/media checks are automatic.
 # Code copying, heading permalinks and table sorting need no settings.
 # Labelled code fences use local Prism highlighting; unknown languages stay plain.

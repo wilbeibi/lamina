@@ -16,7 +16,7 @@ Pinned notes show 📌 before their titles. The Atom feed stays chronological.
 
 Math uses Temml (MathML), Mermaid diagrams pele; both load only where used. To
 self-host, put temml.min.js, Temml-Local.css, Temml.woff2 and pele.global.js in theme/.
-Pele defaults to 1.10.0; update self-hosted copies separately.
+Pele defaults to 1.13.0; update self-hosted copies separately.
 Pages load CSS and JS at content-hashed addresses, so caches never serve stale copies.
 Unlinked images open in a zoom dialog. Missing local links and media warn at build time.
 On HTTPS or localhost, code blocks have subtle Copy text in the top-right corner.
